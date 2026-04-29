@@ -1,0 +1,742 @@
+const canvas = document.querySelector("#game");
+const context = canvas.getContext("2d");
+const scoreElement = document.querySelector("#score");
+const livesElement = document.querySelector("#lives");
+const statusElement = document.querySelector("#status");
+const pauseButton = document.querySelector("#pause-button");
+const difficultyButtons = document.querySelectorAll(".difficulty-item[data-level]");
+
+const tileSize = 32;
+const map = [
+  "##############",
+  "#o....##....o#",
+  "#.##..##..##.#",
+  "#o..........o#",
+  "###.##..##.###",
+  "#...#....#...#",
+  "#.###.##.###.#",
+  "#......#.....#",
+  "#.###.##.###.#",
+  "#...#....#...#",
+  "###.##..##.###",
+  "#............#",
+  "#.##..##..##.#",
+  "#o....##....o#",
+  "##############",
+];
+
+const directions = {
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  a: { x: -1, y: 0 },
+  d: { x: 1, y: 0 },
+  s: { x: 0, y: 1 },
+  w: { x: 0, y: -1 },
+};
+
+const oppositeDirections = new Map([
+  ["0,-1", "0,1"],
+  ["0,1", "0,-1"],
+  ["-1,0", "1,0"],
+  ["1,0", "-1,0"],
+]);
+
+const startPlayer = { x: 1, y: 1 };
+const startGhosts = [
+  { x: 12, y: 13, color: "#ff4b67", scatter: { x: 12, y: 1 } },
+  { x: 12, y: 1, color: "#50d8ff", scatter: { x: 1, y: 13 } },
+  { x: 1, y: 13, color: "#ff9f43", scatter: { x: 12, y: 13 } },
+  { x: 1, y: 3, color: "#c77dff", scatter: { x: 1, y: 1 } },
+];
+
+const difficultySettings = {
+  1: {
+    message: "Nivel 1: sistema estable.",
+    playerSpeed: 150,
+    droneSpeed: 104,
+    droneCount: 3,
+  },
+  2: {
+    message: "Nivel 2: drones y robot mas rapidos.",
+    playerSpeed: 176,
+    droneSpeed: 132,
+    droneCount: 3,
+  },
+  3: {
+    message: "Nivel 3: velocidad alta y un dron extra.",
+    playerSpeed: 176,
+    droneSpeed: 132,
+    droneCount: 4,
+  },
+};
+
+let score = 0;
+let lives = 3;
+let pellets = new Set();
+let powerPellets = new Set();
+let frightenedUntil = 0;
+let gameState = "ready";
+let lastTime = 0;
+let animationTick = 0;
+let currentLevel = 1;
+let shakeTime = 0;
+const impactEffects = [];
+
+const player = {
+  col: startPlayer.x,
+  row: startPlayer.y,
+  x: startPlayer.x * tileSize,
+  y: startPlayer.y * tileSize,
+  direction: { x: 0, y: 0 },
+  nextDirection: { x: 0, y: 0 },
+  speed: 150,
+};
+
+let ghosts = [];
+
+function createDrone(ghost) {
+  const settings = difficultySettings[currentLevel];
+
+  return {
+    col: ghost.x,
+    row: ghost.y,
+    x: ghost.x * tileSize,
+    y: ghost.y * tileSize,
+    direction: { x: 0, y: -1 },
+    color: ghost.color,
+    scatter: ghost.scatter,
+    speed: settings.droneSpeed,
+  };
+}
+
+function buildDrones() {
+  const settings = difficultySettings[currentLevel];
+  ghosts = startGhosts.slice(0, settings.droneCount).map(createDrone);
+}
+
+function resetPellets() {
+  pellets = new Set();
+  powerPellets = new Set();
+
+  for (let row = 0; row < map.length; row += 1) {
+    for (let col = 0; col < map[row].length; col += 1) {
+      if (map[row][col] === ".") {
+        pellets.add(`${col},${row}`);
+      }
+
+      if (map[row][col] === "o") {
+        powerPellets.add(`${col},${row}`);
+      }
+    }
+  }
+}
+
+function resetPositions() {
+  const settings = difficultySettings[currentLevel];
+
+  player.col = startPlayer.x;
+  player.row = startPlayer.y;
+  player.x = startPlayer.x * tileSize;
+  player.y = startPlayer.y * tileSize;
+  player.direction = { x: 0, y: 0 };
+  player.nextDirection = { x: 0, y: 0 };
+  player.speed = settings.playerSpeed;
+
+  ghosts.forEach((ghost, index) => {
+    ghost.col = startGhosts[index].x;
+    ghost.row = startGhosts[index].y;
+    ghost.x = startGhosts[index].x * tileSize;
+    ghost.y = startGhosts[index].y * tileSize;
+    ghost.direction = { x: 0, y: -1 };
+    ghost.speed = settings.droneSpeed;
+  });
+}
+
+function newGame() {
+  const settings = difficultySettings[currentLevel];
+
+  score = 0;
+  lives = 3;
+  frightenedUntil = 0;
+  shakeTime = 0;
+  impactEffects.length = 0;
+  gameState = "playing";
+  resetPellets();
+  buildDrones();
+  resetPositions();
+  updateHud(`${settings.message} Flechas o WASD para moverte.`);
+}
+
+function updateHud(message) {
+  scoreElement.textContent = score;
+  livesElement.textContent = lives;
+  statusElement.textContent = message;
+  updatePauseButton();
+}
+
+function updatePauseButton() {
+  if (gameState === "paused") {
+    pauseButton.textContent = "Continuar";
+    return;
+  }
+
+  if (gameState === "gameOver" || gameState === "won") {
+    pauseButton.textContent = "Reiniciar";
+    return;
+  }
+
+  pauseButton.textContent = "Pausar";
+}
+
+function togglePause() {
+  if (gameState !== "playing" && gameState !== "paused") {
+    return;
+  }
+
+  gameState = gameState === "playing" ? "paused" : "playing";
+  updateHud(gameState === "paused" ? "Pausa. Espacio o boton para continuar." : "Flechas o WASD para moverte. Espacio para pausar.");
+}
+
+function updateDifficultyButtons() {
+  difficultyButtons.forEach((button) => {
+    const isActive = Number(button.dataset.level) === currentLevel;
+    button.classList.toggle("difficulty-item--active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function setDifficulty(level) {
+  currentLevel = level;
+  updateDifficultyButtons();
+  newGame();
+}
+
+function tileKey(col, row) {
+  return `${col},${row}`;
+}
+
+function isWall(col, row) {
+  return map[row]?.[col] === "#" || map[row]?.[col] === undefined;
+}
+
+function isCentered(entity) {
+  return entity.x === entity.col * tileSize && entity.y === entity.row * tileSize;
+}
+
+function canMoveFrom(entity, direction) {
+  return !isWall(entity.col + direction.x, entity.row + direction.y);
+}
+
+function moveEntity(entity, deltaTime) {
+  if (entity.direction.x === 0 && entity.direction.y === 0) {
+    return;
+  }
+
+  const step = entity.speed * deltaTime;
+
+  if (entity.direction.x !== 0) {
+    const nextCol = entity.direction.x > 0 ? entity.col + 1 : entity.col - 1;
+    const nextX = nextCol * tileSize;
+
+    if (isWall(nextCol, entity.row)) {
+      entity.x = entity.col * tileSize;
+      entity.direction = { x: 0, y: 0 };
+    } else {
+      entity.x += entity.direction.x * step;
+
+      if ((entity.direction.x > 0 && entity.x >= nextX) || (entity.direction.x < 0 && entity.x <= nextX)) {
+        entity.x = nextX;
+        entity.col = nextCol;
+      }
+    }
+  }
+
+  if (entity.direction.y !== 0) {
+    const nextRow = entity.direction.y > 0 ? entity.row + 1 : entity.row - 1;
+    const nextY = nextRow * tileSize;
+
+    if (isWall(entity.col, nextRow)) {
+      entity.y = entity.row * tileSize;
+      entity.direction = { x: 0, y: 0 };
+    } else {
+      entity.y += entity.direction.y * step;
+
+      if ((entity.direction.y > 0 && entity.y >= nextY) || (entity.direction.y < 0 && entity.y <= nextY)) {
+        entity.y = nextY;
+        entity.row = nextRow;
+      }
+    }
+  }
+}
+
+function chooseGhostDirection(ghost) {
+  const options = Object.values(directions).filter((direction) => canMoveFrom(ghost, direction));
+  const reverse = oppositeDirections.get(`${ghost.direction.x},${ghost.direction.y}`);
+  const filtered = options.length > 1 ? options.filter((direction) => `${direction.x},${direction.y}` !== reverse) : options;
+  const frightened = Date.now() < frightenedUntil;
+
+  if (frightened) {
+    return filtered[Math.floor(Math.random() * filtered.length)] ?? ghost.direction;
+  }
+
+  const target = score % 120 < 80 ? player : ghost.scatter;
+  return filtered.reduce((best, direction) => {
+    const nextCol = ghost.col + direction.x;
+    const nextRow = ghost.row + direction.y;
+    const distance = Math.abs(target.col - nextCol) + Math.abs(target.row - nextRow);
+
+    return distance < best.distance ? { direction, distance } : best;
+  }, { direction: filtered[0] ?? ghost.direction, distance: Number.POSITIVE_INFINITY }).direction;
+}
+
+function updatePlayer(deltaTime) {
+  if (isCentered(player)) {
+    player.x = player.col * tileSize;
+    player.y = player.row * tileSize;
+
+    if (canMoveFrom(player, player.nextDirection)) {
+      player.direction = player.nextDirection;
+    }
+
+    if (!canMoveFrom(player, player.direction)) {
+      player.direction = { x: 0, y: 0 };
+    }
+  }
+
+  moveEntity(player, deltaTime);
+
+  const key = tileKey(player.col, player.row);
+
+  if (pellets.delete(key)) {
+    score += 10;
+  }
+
+  if (powerPellets.delete(key)) {
+    score += 50;
+    frightenedUntil = Date.now() + 7000;
+    updateHud("Poder activo: puedes destruir drones.");
+  }
+}
+
+function updateGhosts(deltaTime) {
+  ghosts.forEach((ghost) => {
+    if (isCentered(ghost)) {
+      ghost.x = ghost.col * tileSize;
+      ghost.y = ghost.row * tileSize;
+      ghost.direction = chooseGhostDirection(ghost);
+    }
+
+    moveEntity(ghost, deltaTime);
+  });
+}
+
+function distanceBetween(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.hypot(dx, dy);
+}
+
+function spawnImpactEffect(x, y, color) {
+  impactEffects.push({
+    x,
+    y,
+    color,
+    age: 0,
+    duration: 0.45,
+  });
+  shakeTime = 0.22;
+}
+
+function updateImpactEffects(deltaTime) {
+  shakeTime = Math.max(0, shakeTime - deltaTime);
+
+  for (let index = impactEffects.length - 1; index >= 0; index -= 1) {
+    impactEffects[index].age += deltaTime;
+
+    if (impactEffects[index].age >= impactEffects[index].duration) {
+      impactEffects.splice(index, 1);
+    }
+  }
+}
+
+function handleCollisions() {
+  const frightened = Date.now() < frightenedUntil;
+  let collisionHandled = false;
+
+  ghosts.forEach((ghost, index) => {
+    if (collisionHandled || distanceBetween(player, ghost) > 22) {
+      return;
+    }
+
+    collisionHandled = true;
+    spawnImpactEffect(player.x + tileSize / 2, player.y + tileSize / 2, frightened ? "#9bd8ff" : "#ff4b67");
+
+    if (frightened) {
+      score += 200;
+      const startGhost = startGhosts[index];
+      ghost.col = startGhost.x;
+      ghost.row = startGhost.y;
+      ghost.x = ghost.col * tileSize;
+      ghost.y = ghost.row * tileSize;
+      updateHud("Drone destruido. Sigue asi.");
+      return;
+    }
+
+    lives -= 1;
+
+    if (lives <= 0) {
+      gameState = "gameOver";
+      updateHud("Game over. Presiona Enter para reiniciar.");
+      return;
+    }
+
+    resetPositions();
+    updateHud("Perdiste una vida. Sigue jugando.");
+  });
+}
+
+function checkWin() {
+  if (pellets.size === 0 && powerPellets.size === 0) {
+    gameState = "won";
+    updateHud("Ganaste. Presiona Enter para jugar otra vez.");
+  }
+}
+
+function update(deltaTime) {
+  animationTick += deltaTime;
+  updateImpactEffects(deltaTime);
+
+  if (gameState !== "playing") {
+    return;
+  }
+
+  updatePlayer(deltaTime);
+  updateGhosts(deltaTime);
+  handleCollisions();
+  checkWin();
+  updateHud(statusElement.textContent);
+}
+
+function drawMap() {
+  context.fillStyle = "#020806";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.strokeStyle = "rgba(84, 255, 159, 0.12)";
+  context.lineWidth = 1;
+  for (let x = tileSize / 2; x < canvas.width; x += tileSize) {
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, canvas.height);
+    context.stroke();
+  }
+
+  for (let y = tileSize / 2; y < canvas.height; y += tileSize) {
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(canvas.width, y);
+    context.stroke();
+  }
+
+  for (let row = 0; row < map.length; row += 1) {
+    for (let col = 0; col < map[row].length; col += 1) {
+      const x = col * tileSize;
+      const y = row * tileSize;
+
+      if (map[row][col] !== "#") {
+        context.strokeStyle = "rgba(84, 255, 159, 0.26)";
+        context.lineWidth = 3;
+        context.beginPath();
+        context.moveTo(x + tileSize / 2, y + 4);
+        context.lineTo(x + tileSize / 2, y + tileSize - 4);
+        context.moveTo(x + 4, y + tileSize / 2);
+        context.lineTo(x + tileSize - 4, y + tileSize / 2);
+        context.stroke();
+
+        context.fillStyle = "rgba(141, 255, 176, 0.18)";
+        context.fillRect(x + tileSize / 2 - 2, y + tileSize / 2 - 2, 4, 4);
+        continue;
+      }
+
+      context.fillStyle = "#10261d";
+      context.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+      context.strokeStyle = "#54ff9f";
+      context.strokeRect(x + 4, y + 4, tileSize - 8, tileSize - 8);
+
+      context.strokeStyle = "rgba(220, 231, 255, 0.28)";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(x + 8, y + 9);
+      context.lineTo(x + tileSize - 8, y + 9);
+      context.moveTo(x + 8, y + tileSize - 9);
+      context.lineTo(x + tileSize - 8, y + tileSize - 9);
+      context.stroke();
+    }
+  }
+}
+
+function drawPellets() {
+  context.fillStyle = "#ffe7a3";
+
+  for (const pellet of pellets) {
+    const [col, row] = pellet.split(",").map(Number);
+    context.beginPath();
+    context.arc(col * tileSize + tileSize / 2, row * tileSize + tileSize / 2, 4, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  for (const pellet of powerPellets) {
+    const [col, row] = pellet.split(",").map(Number);
+    context.beginPath();
+    context.arc(col * tileSize + tileSize / 2, row * tileSize + tileSize / 2, 8, 0, Math.PI * 2);
+    context.fill();
+  }
+}
+
+function roundedRectangle(x, y, width, height, radius) {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.lineTo(x + width - radius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + radius);
+  context.lineTo(x + width, y + height - radius);
+  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  context.lineTo(x + radius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - radius);
+  context.lineTo(x, y + radius);
+  context.quadraticCurveTo(x, y, x + radius, y);
+  context.closePath();
+}
+
+function drawPlayer() {
+  const centerX = player.x + tileSize / 2;
+  const centerY = player.y + tileSize / 2;
+  const bob = Math.sin(animationTick * 12) * 1.5;
+  const eyeOffsetX = player.direction.x * 2;
+  const eyeOffsetY = player.direction.y * 2;
+
+  context.save();
+  context.translate(centerX, centerY + bob);
+
+  context.strokeStyle = "#9bd8ff";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(0, -13);
+  context.lineTo(0, -18);
+  context.stroke();
+
+  context.fillStyle = "#ffd447";
+  context.beginPath();
+  context.arc(0, -20, 3, 0, Math.PI * 2);
+  context.fill();
+
+  context.fillStyle = "#8bd3ff";
+  context.strokeStyle = "#f7f7fb";
+  context.lineWidth = 2;
+  roundedRectangle(-11, -13, 22, 18, 5);
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = "#101014";
+  context.beginPath();
+  context.arc(-5 + eyeOffsetX, -5 + eyeOffsetY, 2.4, 0, Math.PI * 2);
+  context.arc(5 + eyeOffsetX, -5 + eyeOffsetY, 2.4, 0, Math.PI * 2);
+  context.fill();
+
+  context.fillStyle = "#dce7ff";
+  context.fillRect(-5, 1, 10, 2);
+
+  context.fillStyle = "#d7dde8";
+  context.strokeStyle = "#8fa3c8";
+  context.lineWidth = 2;
+  roundedRectangle(-9, 6, 18, 14, 4);
+  context.fill();
+  context.stroke();
+
+  context.strokeStyle = "#8bd3ff";
+  context.beginPath();
+  context.moveTo(-12, 9);
+  context.lineTo(-16, 15);
+  context.moveTo(12, 9);
+  context.lineTo(16, 15);
+  context.stroke();
+
+  context.fillStyle = "#ffd447";
+  context.beginPath();
+  context.arc(-6, 22, 4, 0, Math.PI * 2);
+  context.arc(6, 22, 4, 0, Math.PI * 2);
+  context.fill();
+
+  context.restore();
+}
+
+function drawDrone(ghost) {
+  const frightened = Date.now() < frightenedUntil;
+  const x = ghost.x + tileSize / 2;
+  const y = ghost.y + tileSize / 2;
+  const rotorPulse = Math.abs(Math.sin(animationTick * 18)) * 2;
+  const bodyColor = frightened ? "#273dff" : ghost.color;
+  const lightColor = frightened ? "#f7f7fb" : "#9dffcb";
+
+  context.save();
+  context.translate(x, y);
+
+  context.strokeStyle = "#9aa6bd";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.moveTo(-9, -5);
+  context.lineTo(-17, -13);
+  context.moveTo(9, -5);
+  context.lineTo(17, -13);
+  context.moveTo(-9, 6);
+  context.lineTo(-17, 14);
+  context.moveTo(9, 6);
+  context.lineTo(17, 14);
+  context.stroke();
+
+  context.strokeStyle = frightened ? "#9bd8ff" : "#dce7ff";
+  context.lineWidth = 2;
+  [
+    [-18, -14],
+    [18, -14],
+    [-18, 14],
+    [18, 14],
+  ].forEach(([rotorX, rotorY]) => {
+    context.beginPath();
+    context.ellipse(rotorX, rotorY, 8 + rotorPulse, 3, 0, 0, Math.PI * 2);
+    context.stroke();
+    context.beginPath();
+    context.ellipse(rotorX, rotorY, 3, 8 + rotorPulse, 0, 0, Math.PI * 2);
+    context.stroke();
+  });
+
+  context.fillStyle = "#151823";
+  roundedRectangle(-12, -9, 24, 18, 5);
+  context.fill();
+  context.strokeStyle = bodyColor;
+  context.lineWidth = 3;
+  context.stroke();
+
+  context.fillStyle = bodyColor;
+  roundedRectangle(-7, -5, 14, 10, 3);
+  context.fill();
+
+  context.fillStyle = lightColor;
+  context.beginPath();
+  context.arc(-4, -1, 2, 0, Math.PI * 2);
+  context.arc(4, -1, 2, 0, Math.PI * 2);
+  context.fill();
+
+  context.restore();
+}
+
+function drawImpactEffects() {
+  impactEffects.forEach((effect) => {
+    const progress = effect.age / effect.duration;
+    const alpha = 1 - progress;
+    const radius = 8 + progress * 28;
+
+    context.save();
+    context.globalAlpha = alpha;
+    context.strokeStyle = effect.color;
+    context.lineWidth = 4;
+    context.beginPath();
+    context.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
+    context.stroke();
+
+    context.fillStyle = "#ffd447";
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (Math.PI * 2 * index) / 8 + progress * 1.2;
+      const sparkDistance = 10 + progress * 22;
+      const sparkX = effect.x + Math.cos(angle) * sparkDistance;
+      const sparkY = effect.y + Math.sin(angle) * sparkDistance;
+      context.beginPath();
+      context.arc(sparkX, sparkY, 2.5 * alpha, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.restore();
+  });
+}
+
+function drawOverlay() {
+  if (gameState === "playing") {
+    return;
+  }
+
+  context.fillStyle = "rgba(0, 0, 0, 0.62)";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "#ffd447";
+  context.textAlign = "center";
+  context.font = "bold 34px Arial";
+
+  const text = gameState === "paused" ? "PAUSA" : gameState === "won" ? "GANASTE" : "GAME OVER";
+  const hint = gameState === "paused" ? "Espacio o boton para continuar" : "Presiona Enter para reiniciar";
+
+  context.fillText(text, canvas.width / 2, canvas.height / 2 - 8);
+
+  context.fillStyle = "#f7f7fb";
+  context.font = "16px Arial";
+  context.fillText(hint, canvas.width / 2, canvas.height / 2 + 26);
+}
+
+function draw() {
+  const shake = shakeTime > 0 ? Math.sin(animationTick * 80) * shakeTime * 16 : 0;
+
+  context.save();
+  context.translate(shake, -shake * 0.6);
+  drawMap();
+  drawPellets();
+  ghosts.forEach(drawDrone);
+  drawPlayer();
+  drawImpactEffects();
+  context.restore();
+
+  drawOverlay();
+}
+
+function gameLoop(currentTime) {
+  const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.05);
+  lastTime = currentTime;
+
+  update(deltaTime);
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener("keydown", (event) => {
+  const requestedDirection = directions[event.key] ?? directions[event.key.toLowerCase()];
+
+  if (requestedDirection) {
+    event.preventDefault();
+    player.nextDirection = requestedDirection;
+  }
+
+  if (event.code === "Space" && (gameState === "playing" || gameState === "paused")) {
+    event.preventDefault();
+    togglePause();
+  }
+
+  if (event.key === "Enter" && gameState !== "playing") {
+    event.preventDefault();
+    newGame();
+  }
+});
+
+pauseButton.addEventListener("click", () => {
+  if (gameState === "gameOver" || gameState === "won") {
+    newGame();
+    return;
+  }
+
+  togglePause();
+});
+
+difficultyButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setDifficulty(Number(button.dataset.level));
+  });
+});
+
+updateDifficultyButtons();
+newGame();
+requestAnimationFrame(gameLoop);

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RoboChip | Koditos Arcade</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="play-area" aria-label="Area de juego">
+        <div class="board-column">
+          <header class="hud">
+            <a class="back-link" href="../../index.html">Menu</a>
+            <h1>Robo Chip</h1>
+            <div class="stats">
+              <p>Puntos: <span id="score">0</span></p>
+              <p>Vidas: <span id="lives">3</span></p>
+            </div>
+          </header>
+
+          <div class="controls">
+            <button id="pause-button" type="button">Pausar</button>
+          </div>
+
+          <canvas id="game" width="448" height="480" aria-label="Juego RoboChip"></canvas>
+          <p class="status" id="status">Flechas o WASD para moverte. Espacio para pausar.</p>
+        </div>
+
+        <aside class="difficulty-panel" aria-labelledby="difficulty-title">
+          <h2 id="difficulty-title">Dificultad</h2>
+          <ol class="difficulty-list">
+            <li>
+              <button class="difficulty-item difficulty-item--active" type="button" data-level="1" aria-pressed="true">
+                <span class="difficulty-name">Nivel 1</span>
+                <span class="difficulty-label">Default</span>
+              </button>
+            </li>
+            <li>
+              <button class="difficulty-item" type="button" data-level="2" aria-pressed="false">
+                <span class="difficulty-name">Nivel 2</span>
+                <span class="difficulty-label">Mas rapido</span>
+              </button>
+            </li>
+            <li>
+              <button class="difficulty-item" type="button" data-level="3" aria-pressed="false">
+                <span class="difficulty-name">Nivel 3</span>
+                <span class="difficulty-label">Nuevo enemigo</span>
+              </button>
+            </li>
+          </ol>
+        </aside>
+      </section>
+    </main>
+
+    <script src="src/game.js"></script>
+  </body>
+</html>
