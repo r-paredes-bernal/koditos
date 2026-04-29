@@ -57,6 +57,7 @@ body {
 
 .controls {
   display: flex;
+  gap: 10px;
   justify-content: center;
   margin-bottom: 12px;
 }
@@ -158,6 +159,27 @@ canvas {
 
 .difficulty-item--active .difficulty-label {
   color: #ffd447;
+}
+
+.sound-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 14px;
+  border: 2px solid #54ff9f;
+  border-radius: 6px;
+  background: #101b18;
+  color: #f7f7fb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 22px;
+}
+
+.sound-button:hover {
+  border-color: #ffd447;
+}
+
+.sound-button:active {
+  transform: translateY(1px);
 }
 
 .status {

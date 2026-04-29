@@ -4,6 +4,7 @@ const scoreElement = document.querySelector("#score");
 const livesElement = document.querySelector("#lives");
 const statusElement = document.querySelector("#status");
 const pauseButton = document.querySelector("#pause-button");
+const muteButton = document.querySelector("#mute-button");
 const difficultyButtons = document.querySelectorAll(".difficulty-item[data-level]");
 
 const tileSize = 32;
@@ -82,6 +83,8 @@ let lastTime = 0;
 let animationTick = 0;
 let currentLevel = 1;
 let shakeTime = 0;
+let audioContext = null;
+let isMuted = false;
 const impactEffects = [];
 
 const player = {
@@ -190,12 +193,93 @@ function updatePauseButton() {
   pauseButton.textContent = "Pausar";
 }
 
+function updateMuteButton() {
+  muteButton.textContent = isMuted ? "🔇" : "🔊";
+  muteButton.setAttribute("aria-label", isMuted ? "Activar sonido" : "Mutear sonido");
+  muteButton.setAttribute("aria-pressed", String(isMuted));
+}
+
+function ensureAudio() {
+  if (!audioContext) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    audioContext = new AudioContextClass();
+  }
+
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
+}
+
+function playTone(frequency, startTime, duration, type = "square", volume = 0.08) {
+  if (!audioContext || isMuted) {
+    return;
+  }
+
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, startTime);
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.start(startTime);
+  oscillator.stop(startTime + duration + 0.02);
+}
+
+function playSound(name) {
+  if (!audioContext || isMuted) {
+    return;
+  }
+
+  const now = audioContext.currentTime;
+
+  if (name === "pellet") {
+    playTone(740, now, 0.045, "square", 0.04);
+  }
+
+  if (name === "power") {
+    playTone(392, now, 0.08, "sawtooth", 0.06);
+    playTone(784, now + 0.08, 0.12, "sawtooth", 0.07);
+  }
+
+  if (name === "hit") {
+    playTone(170, now, 0.12, "sawtooth", 0.09);
+    playTone(95, now + 0.06, 0.18, "square", 0.08);
+  }
+
+  if (name === "drone") {
+    playTone(880, now, 0.07, "triangle", 0.07);
+    playTone(1175, now + 0.07, 0.09, "triangle", 0.06);
+  }
+
+  if (name === "win") {
+    [523, 659, 784, 1047].forEach((frequency, index) => {
+      playTone(frequency, now + index * 0.08, 0.12, "square", 0.06);
+    });
+  }
+
+  if (name === "lose") {
+    [330, 247, 196, 123].forEach((frequency, index) => {
+      playTone(frequency, now + index * 0.1, 0.14, "sawtooth", 0.07);
+    });
+  }
+
+  if (name === "pause") {
+    playTone(440, now, 0.06, "triangle", 0.05);
+  }
+}
+
 function togglePause() {
   if (gameState !== "playing" && gameState !== "paused") {
     return;
   }
 
   gameState = gameState === "playing" ? "paused" : "playing";
+  playSound("pause");
   updateHud(gameState === "paused" ? "Pausa. Espacio o boton para continuar." : "Flechas o WASD para moverte. Espacio para pausar.");
 }
 
@@ -311,11 +395,13 @@ function updatePlayer(deltaTime) {
 
   if (pellets.delete(key)) {
     score += 10;
+    playSound("pellet");
   }
 
   if (powerPellets.delete(key)) {
     score += 50;
     frightenedUntil = Date.now() + 7000;
+    playSound("power");
     updateHud("Poder activo: puedes destruir drones.");
   }
 }
@@ -375,6 +461,7 @@ function handleCollisions() {
 
     if (frightened) {
       score += 200;
+      playSound("drone");
       const startGhost = startGhosts[index];
       ghost.col = startGhost.x;
       ghost.row = startGhost.y;
@@ -385,9 +472,11 @@ function handleCollisions() {
     }
 
     lives -= 1;
+    playSound("hit");
 
     if (lives <= 0) {
       gameState = "gameOver";
+      playSound("lose");
       updateHud("Game over. Presiona Enter para reiniciar.");
       return;
     }
@@ -400,6 +489,7 @@ function handleCollisions() {
 function checkWin() {
   if (pellets.size === 0 && powerPellets.size === 0) {
     gameState = "won";
+    playSound("win");
     updateHud("Ganaste. Presiona Enter para jugar otra vez.");
   }
 }
@@ -704,6 +794,8 @@ function gameLoop(currentTime) {
 }
 
 window.addEventListener("keydown", (event) => {
+  ensureAudio();
+
   const requestedDirection = directions[event.key] ?? directions[event.key.toLowerCase()];
 
   if (requestedDirection) {
@@ -723,6 +815,8 @@ window.addEventListener("keydown", (event) => {
 });
 
 pauseButton.addEventListener("click", () => {
+  ensureAudio();
+
   if (gameState === "gameOver" || gameState === "won") {
     newGame();
     return;
@@ -731,12 +825,24 @@ pauseButton.addEventListener("click", () => {
   togglePause();
 });
 
+muteButton.addEventListener("click", () => {
+  ensureAudio();
+  isMuted = !isMuted;
+  updateMuteButton();
+
+  if (!isMuted) {
+    playSound("pause");
+  }
+});
+
 difficultyButtons.forEach((button) => {
   button.addEventListener("click", () => {
+    ensureAudio();
     setDifficulty(Number(button.dataset.level));
   });
 });
 
+updateMuteButton();
 updateDifficultyButtons();
 newGame();
 requestAnimationFrame(gameLoop);
