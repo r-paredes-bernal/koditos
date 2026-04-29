@@ -95,6 +95,11 @@ body {
   width: 100%;
 }
 
+.side-column {
+  display: grid;
+  gap: 12px;
+}
+
 canvas {
   width: 100%;
   aspect-ratio: 448 / 480;
@@ -164,7 +169,6 @@ canvas {
 .sound-button {
   width: 100%;
   min-height: 42px;
-  margin-top: 14px;
   border: 2px solid #54ff9f;
   border-radius: 6px;
   background: #101b18;

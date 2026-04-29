@@ -578,6 +578,7 @@ function drawPellets() {
 
   for (const pellet of powerPellets) {
     const [col, row] = pellet.split(",").map(Number);
+    context.fillStyle = "#50d8ff";
     context.beginPath();
     context.arc(col * tileSize + tileSize / 2, row * tileSize + tileSize / 2, 8, 0, Math.PI * 2);
     context.fill();

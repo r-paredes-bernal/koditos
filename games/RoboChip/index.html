@@ -27,33 +27,35 @@
           <p class="status" id="status">Flechas o WASD para moverte. Espacio para pausar.</p>
         </div>
 
-        <aside class="difficulty-panel" aria-labelledby="difficulty-title">
-          <h2 id="difficulty-title">Dificultad</h2>
-          <ol class="difficulty-list">
-            <li>
-              <button class="difficulty-item difficulty-item--active" type="button" data-level="1" aria-pressed="true">
-                <span class="difficulty-name">Nivel 1</span>
-                <span class="difficulty-label">Default</span>
-              </button>
-            </li>
-            <li>
-              <button class="difficulty-item" type="button" data-level="2" aria-pressed="false">
-                <span class="difficulty-name">Nivel 2</span>
-                <span class="difficulty-label">Mas rapido</span>
-              </button>
-            </li>
-            <li>
-              <button class="difficulty-item" type="button" data-level="3" aria-pressed="false">
-                <span class="difficulty-name">Nivel 3</span>
-                <span class="difficulty-label">Nuevo enemigo</span>
-              </button>
-            </li>
-          </ol>
-
+        <div class="side-column">
           <button class="sound-button" id="mute-button" type="button" aria-label="Mutear sonido" aria-pressed="false">
             <span aria-hidden="true">🔊</span>
           </button>
-        </aside>
+
+          <aside class="difficulty-panel" aria-labelledby="difficulty-title">
+            <h2 id="difficulty-title">Dificultad</h2>
+            <ol class="difficulty-list">
+              <li>
+                <button class="difficulty-item difficulty-item--active" type="button" data-level="1" aria-pressed="true">
+                  <span class="difficulty-name">Normal</span>
+                  <span class="difficulty-label">Default</span>
+                </button>
+              </li>
+              <li>
+                <button class="difficulty-item" type="button" data-level="2" aria-pressed="false">
+                  <span class="difficulty-name">Media</span>
+                  <span class="difficulty-label">Mas rapido</span>
+                </button>
+              </li>
+              <li>
+                <button class="difficulty-item" type="button" data-level="3" aria-pressed="false">
+                  <span class="difficulty-name">Alta</span>
+                  <span class="difficulty-label">Nuevo enemigo</span>
+                </button>
+              </li>
+            </ol>
+          </aside>
+        </div>
       </section>
     </main>
 
