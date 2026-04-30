@@ -6,25 +6,62 @@ const statusElement = document.querySelector("#status");
 const pauseButton = document.querySelector("#pause-button");
 const muteButton = document.querySelector("#mute-button");
 const difficultyButtons = document.querySelectorAll(".difficulty-item[data-level]");
+const scenarioButtons = document.querySelectorAll(".scenario-item[data-scenario]");
 
 const tileSize = 32;
-const map = [
-  "##############",
-  "#o....##....o#",
-  "#.##..##..##.#",
-  "#o..........o#",
-  "###.##..##.###",
-  "#...#....#...#",
-  "#.###.##.###.#",
-  "#......#.....#",
-  "#.###.##.###.#",
-  "#...#....#...#",
-  "###.##..##.###",
-  "#............#",
-  "#.##..##..##.#",
-  "#o....##....o#",
-  "##############",
-];
+const scenarioMaps = {
+  motherboard: [
+    "##############",
+    "#o....##....o#",
+    "#.##..##..##.#",
+    "#o..........o#",
+    "###.##..##.###",
+    "#...#....#...#",
+    "#.###.##.###.#",
+    "#......#.....#",
+    "#.###.##.###.#",
+    "#...#....#...#",
+    "###.##..##.###",
+    "#............#",
+    "#.##..##..##.#",
+    "#o....##....o#",
+    "##############",
+  ],
+  pizza: [
+    "##############",
+    "#o..........o#",
+    "#.##.####.##.#",
+    "#o....##.....#",
+    "###.#....#.###",
+    "xx#........#xx",
+    "xx##.####.##xx",
+    "xxx#......#xxx",
+    "xx##.####.##xx",
+    "xx#........#xx",
+    "###.#.##.#.###",
+    "#............#",
+    "#.##.####.##.#",
+    "#o..........o#",
+    "##############",
+  ],
+  castle: [
+    "##.########.##",
+    "#o..........o#",
+    "#.###.##.###.#",
+    "#o..........o#",
+    "###.##..##.###",
+    "#...#....#...#",
+    "#.#.######.#.#",
+    "#.#........#.#",
+    "#.#.######.#.#",
+    "#...#....#...#",
+    "###.##..##.###",
+    "#............#",
+    "#.###.##.###.#",
+    "#o..........o#",
+    "##.########.##",
+  ],
+};
 
 const directions = {
   ArrowUp: { x: 0, y: -1 },
@@ -82,6 +119,7 @@ let gameState = "ready";
 let lastTime = 0;
 let animationTick = 0;
 let currentLevel = 1;
+let currentScenario = "motherboard";
 let shakeTime = 0;
 let audioContext = null;
 let isMuted = false;
@@ -120,6 +158,8 @@ function buildDrones() {
 }
 
 function resetPellets() {
+  const map = getCurrentMap();
+
   pellets = new Set();
   powerPellets = new Set();
 
@@ -297,12 +337,31 @@ function setDifficulty(level) {
   newGame();
 }
 
+function getCurrentMap() {
+  return scenarioMaps[currentScenario];
+}
+
+function updateScenarioButtons() {
+  scenarioButtons.forEach((button) => {
+    const isActive = button.dataset.scenario === currentScenario;
+    button.classList.toggle("scenario-item--active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function setScenario(scenario) {
+  currentScenario = scenario;
+  updateScenarioButtons();
+  newGame();
+}
+
 function tileKey(col, row) {
   return `${col},${row}`;
 }
 
 function isWall(col, row) {
-  return map[row]?.[col] === "#" || map[row]?.[col] === undefined;
+  const tile = getCurrentMap()[row]?.[col];
+  return tile === "#" || tile === "x" || tile === undefined;
 }
 
 function isCentered(entity) {
@@ -510,6 +569,8 @@ function update(deltaTime) {
 }
 
 function drawMap() {
+  const map = getCurrentMap();
+
   context.fillStyle = "#020806";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -533,8 +594,13 @@ function drawMap() {
     for (let col = 0; col < map[row].length; col += 1) {
       const x = col * tileSize;
       const y = row * tileSize;
+      const tile = map[row][col];
 
-      if (map[row][col] !== "#") {
+      if (tile === "x") {
+        continue;
+      }
+
+      if (tile !== "#") {
         context.strokeStyle = "rgba(84, 255, 159, 0.26)";
         context.lineWidth = 3;
         context.beginPath();
@@ -843,7 +909,15 @@ difficultyButtons.forEach((button) => {
   });
 });
 
+scenarioButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    ensureAudio();
+    setScenario(button.dataset.scenario);
+  });
+});
+
 updateMuteButton();
 updateDifficultyButtons();
+updateScenarioButtons();
 newGame();
 requestAnimationFrame(gameLoop);
