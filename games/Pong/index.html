@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pong | IXMAIA Arcade</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="hud">
+        <a class="back-link" href="../../index.html">Menu</a>
+        <h1>Pong</h1>
+        <div class="scoreboard" aria-label="Marcador">
+          <span id="left-score">0</span>
+          <span aria-hidden="true">:</span>
+          <span id="right-score">0</span>
+        </div>
+      </header>
+
+      <section class="controls" aria-label="Controles del juego">
+        <button class="mode-button mode-button--active" type="button" data-mode="single" aria-pressed="true">1 jugador</button>
+        <button class="mode-button" type="button" data-mode="two" aria-pressed="false">2 jugadores</button>
+        <button id="pause-button" type="button">Pausar</button>
+        <button id="reset-button" type="button">Reiniciar</button>
+      </section>
+
+      <canvas id="game" width="800" height="460" aria-label="Juego Pong"></canvas>
+      <section class="instructions" aria-labelledby="instructions-title">
+        <h2 id="instructions-title">Controles</h2>
+        <p id="instructions">1 jugador: usa flechas arriba/abajo. La maquina controla la izquierda.</p>
+      </section>
+      <p class="status" id="status">Espacio para pausar.</p>
+    </main>
+
+    <script src="src/game.js"></script>
+  </body>
+</html>
