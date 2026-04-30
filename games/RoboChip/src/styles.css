@@ -14,6 +14,7 @@ body {
 
 .game-shell {
   width: min(760px, calc(100% - 24px));
+  transform: translateY(-20px);
 }
 
 .hud {
