@@ -17,6 +17,11 @@ const ballSize = 14;
 const winningScore = 3;
 const netGap = 42;
 const maxPowerBoost = 0.42;
+const maxBallSpeed = 760;
+const powerHitDuration = 0.45;
+const powerHitCooldownDuration = 1.15;
+const powerHitBoost = 0.36;
+const directionShiftDuration = 0.45;
 const difficultySettings = {
   easy: {
     label: "Facil",
@@ -26,6 +31,7 @@ const difficultySettings = {
     mistakeRange: 150,
     mistakeMinTime: 0.45,
     mistakeRandomTime: 0.65,
+    aiPowerHitChance: 0,
   },
   medium: {
     label: "Medio",
@@ -35,6 +41,7 @@ const difficultySettings = {
     mistakeRange: 115,
     mistakeMinTime: 0.55,
     mistakeRandomTime: 0.7,
+    aiPowerHitChance: 0.35,
   },
   advanced: {
     label: "Avanzado",
@@ -44,11 +51,12 @@ const difficultySettings = {
     mistakeRange: 92,
     mistakeMinTime: 0.65,
     mistakeRandomTime: 0.75,
+    aiPowerHitChance: 0.65,
   },
 };
 
 let mode = "single";
-let difficulty = "advanced";
+let difficulty = "easy";
 let gameState = "playing";
 let lastTime = 0;
 let leftScore = 0;
@@ -57,8 +65,29 @@ let lastBackWallHit = null;
 let assistedWallReturn = null;
 let aiMistakeTimer = 0;
 let aiTargetOffset = 0;
+let aiPowerHitDecisionTimer = 0;
 let pointEffect = null;
 let matchWinner = null;
+let directionShiftTimer = 0;
+let powerUpSpawnTimer = 2.5;
+let dashEffects = [];
+
+const dashCooldowns = {
+  left: 0,
+  right: 0,
+};
+
+const dashRequests = {
+  left: false,
+  right: false,
+};
+
+const directionPowerUp = {
+  active: false,
+  x: canvas.width / 2 - 14,
+  y: canvas.height / 2 - 14,
+  size: 28,
+};
 
 const leftPaddle = {
   x: paddleMargin,
@@ -66,6 +95,7 @@ const leftPaddle = {
   speed: 420,
   vx: 0,
   vy: 0,
+  powerHitTimer: 0,
 };
 
 const rightPaddle = {
@@ -74,6 +104,7 @@ const rightPaddle = {
   speed: 420,
   vx: 0,
   vy: 0,
+  powerHitTimer: 0,
 };
 
 const ball = {
@@ -94,8 +125,8 @@ function updateHud(message) {
   statusElement.textContent = message;
   instructionsElement.textContent =
     mode === "single"
-      ? `1 jugador: usa flechas para mover la pala derecha. Dificultad ${difficultySettings[difficulty].label}.`
-      : "2 jugadores: pala izquierda W/A/S/D, pala derecha flechas.";
+      ? `1 jugador: flechas para mover, Shift para pegar con fuerza. Dificultad ${difficultySettings[difficulty].label}.`
+      : "2 jugadores: izquierda W/A/S/D + Q para pegar fuerte, derecha flechas + Shift para pegar fuerte.";
   pauseButton.textContent = gameState === "paused" ? "Continuar" : "Pausar";
 }
 
@@ -122,10 +153,12 @@ function resetRound() {
   leftPaddle.y = canvas.height / 2 - paddleHeight / 2;
   leftPaddle.vx = 0;
   leftPaddle.vy = 0;
+  leftPaddle.powerHitTimer = 0;
   rightPaddle.x = canvas.width - paddleMargin - paddleWidth;
   rightPaddle.y = canvas.height / 2 - paddleHeight / 2;
   rightPaddle.vx = 0;
   rightPaddle.vy = 0;
+  rightPaddle.powerHitTimer = 0;
   resetBall();
 }
 
@@ -141,9 +174,18 @@ function newGame() {
   leftScore = 0;
   rightScore = 0;
   matchWinner = null;
+  directionShiftTimer = 0;
+  powerUpSpawnTimer = 2.5;
+  directionPowerUp.active = false;
+  dashCooldowns.left = 0;
+  dashCooldowns.right = 0;
+  dashRequests.left = false;
+  dashRequests.right = false;
+  dashEffects = [];
+  aiPowerHitDecisionTimer = 0;
   gameState = "playing";
   resetRound();
-  updateHud(mode === "single" ? "1 jugador: flechas contra la maquina." : "2 jugadores: W/S y Flechas.");
+  updateHud(mode === "single" ? "1 jugador: flechas y Shift contra la maquina." : "2 jugadores: W/A/S/D + Q y Flechas + Shift.");
 }
 
 function setMode(nextMode) {
@@ -152,10 +194,23 @@ function setMode(nextMode) {
   newGame();
 }
 
+function limitBallSpeed() {
+  const speed = Math.hypot(ball.vx, ball.vy);
+
+  if (speed <= maxBallSpeed) {
+    return;
+  }
+
+  const ratio = maxBallSpeed / speed;
+  ball.vx *= ratio;
+  ball.vy *= ratio;
+}
+
 function setDifficulty(nextDifficulty) {
   difficulty = nextDifficulty;
   aiMistakeTimer = 0;
   aiTargetOffset = 0;
+  aiPowerHitDecisionTimer = 0;
   updateDifficultyButtons();
   newGame();
 }
@@ -194,6 +249,12 @@ function movePaddles(deltaTime) {
     const stepX = Math.sign(distanceX) * Math.min(Math.abs(distanceX), aiSpeed * aiSettings.aiHorizontalFactor * deltaTime);
     leftPaddle.y += step;
     leftPaddle.x += stepX;
+    aiPowerHitDecisionTimer = Math.max(0, aiPowerHitDecisionTimer - deltaTime);
+
+    if (shouldAiUsePowerHit(aiSettings)) {
+      requestDash("left");
+      aiPowerHitDecisionTimer = 0.65;
+    }
 
     if (keys.has("arrowup")) {
       rightPaddle.y -= rightPaddle.speed * deltaTime;
@@ -244,6 +305,9 @@ function movePaddles(deltaTime) {
     }
   }
 
+  applyDashRequest(leftPaddle, "left");
+  applyDashRequest(rightPaddle, "right");
+
   leftPaddle.y = clamp(leftPaddle.y, 0, canvas.height - paddleHeight);
   rightPaddle.y = clamp(rightPaddle.y, 0, canvas.height - paddleHeight);
   leftPaddle.x = clamp(leftPaddle.x, paddleMargin, canvas.width / 2 - netGap - paddleWidth);
@@ -254,6 +318,69 @@ function movePaddles(deltaTime) {
   leftPaddle.vy = (leftPaddle.y - leftStartY) / safeDeltaTime;
   rightPaddle.vx = (rightPaddle.x - rightStartX) / safeDeltaTime;
   rightPaddle.vy = (rightPaddle.y - rightStartY) / safeDeltaTime;
+}
+
+function shouldAiUsePowerHit(aiSettings) {
+  if (
+    aiSettings.aiPowerHitChance <= 0 ||
+    dashCooldowns.left > 0 ||
+    leftPaddle.powerHitTimer > 0 ||
+    aiPowerHitDecisionTimer > 0 ||
+    ball.vx >= 0
+  ) {
+    return false;
+  }
+
+  const paddleCenter = leftPaddle.y + paddleHeight / 2;
+  const ballCenter = ball.y + ballSize / 2;
+  const isCloseToAi = ball.x < canvas.width * 0.42;
+  const isAligned = Math.abs(ballCenter - paddleCenter) < paddleHeight * 0.58;
+
+  if (!isCloseToAi || !isAligned) {
+    return false;
+  }
+
+  aiPowerHitDecisionTimer = 0.35;
+
+  return Math.random() < aiSettings.aiPowerHitChance;
+}
+
+function requestDash(side) {
+  if (gameState !== "playing" || dashCooldowns[side] > 0) {
+    return;
+  }
+
+  dashRequests[side] = true;
+}
+
+function applyDashRequest(paddle, side) {
+  if (!dashRequests[side] || dashCooldowns[side] > 0) {
+    dashRequests[side] = false;
+    return;
+  }
+
+  paddle.powerHitTimer = powerHitDuration;
+  dashCooldowns[side] = powerHitCooldownDuration;
+  dashRequests[side] = false;
+  dashEffects.push({
+    side,
+    age: 0,
+    duration: powerHitDuration,
+  });
+}
+
+function updateDash(deltaTime) {
+  dashCooldowns.left = Math.max(0, dashCooldowns.left - deltaTime);
+  dashCooldowns.right = Math.max(0, dashCooldowns.right - deltaTime);
+  leftPaddle.powerHitTimer = Math.max(0, leftPaddle.powerHitTimer - deltaTime);
+  rightPaddle.powerHitTimer = Math.max(0, rightPaddle.powerHitTimer - deltaTime);
+
+  dashEffects = dashEffects
+    .map((effect) => ({
+      ...effect,
+      age: effect.age + deltaTime,
+    }))
+    .filter((effect) => effect.age < effect.duration);
 }
 
 function overlapsPaddle(paddle) {
@@ -271,12 +398,20 @@ function bounceFromPaddle(paddle, direction, usePower = true) {
   const hitOffset = (ballCenter - paddleCenter) / (paddleHeight / 2);
   const forwardVelocity = Math.max(0, paddle.vx * direction);
   const verticalVelocity = Math.min(Math.abs(paddle.vy), paddle.speed);
-  const powerBoost = usePower ? Math.min(maxPowerBoost, forwardVelocity / 650 + verticalVelocity / 1600) : 0;
+  let powerBoost = usePower ? Math.min(maxPowerBoost, forwardVelocity / 650 + verticalVelocity / 1600) : 0;
+
+  if (usePower && paddle.powerHitTimer > 0) {
+    powerBoost += powerHitBoost;
+    paddle.powerHitTimer = 0;
+    updateHud("Golpe fuerte!");
+  }
+
   const outgoingSpeed = 330 * (ball.speedBoost + powerBoost);
 
   ball.speedBoost = Math.min(ball.speedBoost + 0.08, 1.55);
   ball.vx = outgoingSpeed * direction;
   ball.vy = 330 * hitOffset + paddle.vy * 0.18;
+  limitBallSpeed();
   ball.x = direction > 0 ? paddle.x + paddleWidth : paddle.x - ballSize;
   lastBackWallHit = null;
   assistedWallReturn = null;
@@ -324,6 +459,55 @@ function updatePointEffect(deltaTime) {
 
   if (pointEffect.age >= pointEffect.duration) {
     pointEffect = null;
+  }
+}
+
+function spawnDirectionPowerUp() {
+  directionPowerUp.x = canvas.width / 2 - directionPowerUp.size / 2 + (Math.random() - 0.5) * 180;
+  directionPowerUp.y = canvas.height / 2 - directionPowerUp.size / 2 + (Math.random() - 0.5) * 220;
+  directionPowerUp.active = true;
+}
+
+function ballOverlapsDirectionPowerUp() {
+  return (
+    directionPowerUp.active &&
+    ball.x < directionPowerUp.x + directionPowerUp.size &&
+    ball.x + ballSize > directionPowerUp.x &&
+    ball.y < directionPowerUp.y + directionPowerUp.size &&
+    ball.y + ballSize > directionPowerUp.y
+  );
+}
+
+function activateDirectionShift() {
+  const speed = Math.hypot(ball.vx, ball.vy);
+  const horizontalDirection = ball.vx >= 0 ? 1 : -1;
+  const verticalDirection = Math.random() > 0.5 ? 1 : -1;
+  const angle = 0.35 + Math.random() * 0.52;
+
+  directionShiftTimer = directionShiftDuration;
+  directionPowerUp.active = false;
+  powerUpSpawnTimer = 7 + Math.random() * 4;
+  ball.vx = Math.cos(angle) * speed * horizontalDirection;
+  ball.vy = Math.sin(angle) * speed * verticalDirection;
+  limitBallSpeed();
+  updateHud("Cambio de direccion!");
+}
+
+function updatePowerUps(deltaTime) {
+  if (directionShiftTimer > 0) {
+    directionShiftTimer = Math.max(0, directionShiftTimer - deltaTime);
+  }
+
+  if (!directionPowerUp.active) {
+    powerUpSpawnTimer -= deltaTime;
+
+    if (powerUpSpawnTimer <= 0) {
+      spawnDirectionPowerUp();
+    }
+  }
+
+  if (ballOverlapsDirectionPowerUp()) {
+    activateDirectionShift();
   }
 }
 
@@ -415,6 +599,7 @@ function updateBall(deltaTime) {
 
 function update(deltaTime) {
   updatePointEffect(deltaTime);
+  updateDash(deltaTime);
 
   if (gameState !== "playing") {
     return;
@@ -422,6 +607,7 @@ function update(deltaTime) {
 
   movePaddles(deltaTime);
   updateBall(deltaTime);
+  updatePowerUps(deltaTime);
 }
 
 function drawCourt() {
@@ -456,6 +642,11 @@ function drawPaddle(paddle, color) {
   const handleY = headY + headHeight - 2;
 
   context.save();
+  if (paddle.powerHitTimer > 0) {
+    context.shadowColor = "#ffd447";
+    context.shadowBlur = 18;
+  }
+
   context.fillStyle = color;
   context.strokeStyle = "#f7f7fb";
   context.lineWidth = 2;
@@ -482,9 +673,91 @@ function drawPaddle(paddle, color) {
   context.restore();
 }
 
+function drawDashEffects() {
+  dashEffects.forEach((effect) => {
+    const paddle = effect.side === "left" ? leftPaddle : rightPaddle;
+    const progress = effect.age / effect.duration;
+    const alpha = 1 - progress;
+    const centerX = paddle.x + paddleWidth / 2;
+    const centerY = paddle.y + paddleHeight / 2;
+
+    context.save();
+    context.globalAlpha = alpha * 0.75;
+    context.strokeStyle = effect.side === "left" ? "#8dffb0" : "#50d8ff";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.ellipse(centerX, centerY, 30 + progress * 28, 54 + progress * 28, 0, 0, Math.PI * 2);
+    context.stroke();
+    context.restore();
+  });
+}
+
 function drawBall() {
-  context.fillStyle = "#ffd447";
+  context.fillStyle = directionShiftTimer > 0 ? "#b96cff" : "#ffd447";
   context.fillRect(ball.x, ball.y, ballSize, ballSize);
+}
+
+function drawDirectionShiftTrail() {
+  if (directionShiftTimer <= 0) {
+    return;
+  }
+
+  const speed = Math.hypot(ball.vx, ball.vy) || 1;
+  const directionX = ball.vx / speed;
+  const directionY = ball.vy / speed;
+
+  context.save();
+  context.globalAlpha = 0.55;
+  context.fillStyle = "#b96cff";
+
+  for (let index = 1; index <= 4; index += 1) {
+    const fade = 1 - index * 0.18;
+    context.globalAlpha = fade * 0.45;
+    context.fillRect(
+      ball.x - directionX * index * 12,
+      ball.y - directionY * index * 12,
+      ballSize * fade,
+      ballSize * fade
+    );
+  }
+
+  context.restore();
+}
+
+function drawDirectionPowerUp() {
+  if (!directionPowerUp.active) {
+    return;
+  }
+
+  const centerX = directionPowerUp.x + directionPowerUp.size / 2;
+  const centerY = directionPowerUp.y + directionPowerUp.size / 2;
+
+  context.save();
+  context.shadowColor = "#b96cff";
+  context.shadowBlur = 14;
+  context.fillStyle = "#b96cff";
+  context.beginPath();
+  context.arc(centerX, centerY, directionPowerUp.size / 2, 0, Math.PI * 2);
+  context.fill();
+
+  context.shadowBlur = 0;
+  context.fillStyle = "#02040a";
+  context.beginPath();
+  for (let point = 0; point < 10; point += 1) {
+    const radius = point % 2 === 0 ? 10 : 4;
+    const angle = -Math.PI / 2 + point * (Math.PI / 5);
+    const x = centerX + Math.cos(angle) * radius;
+    const y = centerY + Math.sin(angle) * radius;
+
+    if (point === 0) {
+      context.moveTo(x, y);
+    } else {
+      context.lineTo(x, y);
+    }
+  }
+  context.closePath();
+  context.fill();
+  context.restore();
 }
 
 function drawPointEffect() {
@@ -525,19 +798,34 @@ function drawOverlay() {
 
   const userWonMatch = mode === "single" ? matchWinner === "right" : matchWinner === "left";
   const title = gameState === "paused" ? "PAUSA" : "GAME OVER";
-  const message = gameState === "paused" ? "Espacio para continuar" : userWonMatch ? "Has ganado" : "Suerte para la proxima";
+  const resultColor = userWonMatch ? "#8dffb0" : "#ff4b67";
+  const message = gameState === "paused" ? "Espacio para continuar" : userWonMatch ? "¡Has ganado!" : "Suerte para la proxima";
 
   context.fillText(title, canvas.width / 2, canvas.height / 2 - 34);
+
+  if (gameState === "paused") {
+    context.fillStyle = "#f7f7fb";
+    context.font = "20px Arial";
+    context.fillText(message, canvas.width / 2, canvas.height / 2 + 8);
+    return;
+  }
+
+  context.fillStyle = resultColor;
+  context.font = "bold 34px Arial";
+  context.fillText(message, canvas.width / 2, canvas.height / 2 + 12);
+
   context.fillStyle = "#f7f7fb";
   context.font = "18px Arial";
-  context.fillText(message, canvas.width / 2, canvas.height / 2 + 8);
-  context.fillText(gameState === "paused" ? "" : "Enter para reiniciar", canvas.width / 2, canvas.height / 2 + 40);
+  context.fillText("Enter para reiniciar", canvas.width / 2, canvas.height / 2 + 48);
 }
 
 function draw() {
   drawCourt();
+  drawDashEffects();
   drawPaddle(leftPaddle, "#8dffb0");
   drawPaddle(rightPaddle, "#50d8ff");
+  drawDirectionPowerUp();
+  drawDirectionShiftTrail();
   drawBall();
   drawPointEffect();
   drawOverlay();
@@ -563,6 +851,16 @@ window.addEventListener("keydown", (event) => {
   if (event.code === "Space") {
     event.preventDefault();
     togglePause();
+  }
+
+  if (event.code === "ShiftLeft" || event.code === "ShiftRight") {
+    event.preventDefault();
+    requestDash("right");
+  }
+
+  if (key === "q" && mode !== "single") {
+    event.preventDefault();
+    requestDash("left");
   }
 
   if (event.key === "Enter" && gameState === "gameOver") {

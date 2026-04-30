@@ -86,6 +86,17 @@ body {
   gap: 10px;
 }
 
+.side-panel-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(47, 156, 255, 0.45);
+}
+
+.mode-controls {
+  display: grid;
+  gap: 10px;
+}
+
 button {
   min-width: 112px;
   min-height: 38px;
@@ -181,7 +192,12 @@ canvas {
     grid-template-columns: 1fr;
   }
 
-  .difficulty-controls {
+  .difficulty-controls,
+  .mode-controls {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mode-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

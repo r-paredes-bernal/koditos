@@ -19,8 +19,6 @@
       </header>
 
       <section class="controls" aria-label="Controles del juego">
-        <button class="mode-button mode-button--active" type="button" data-mode="single" aria-pressed="true">1 jugador</button>
-        <button class="mode-button" type="button" data-mode="two" aria-pressed="false">2 jugadores</button>
         <button id="pause-button" type="button">Pausar</button>
         <button id="reset-button" type="button">Reiniciar</button>
       </section>
@@ -33,16 +31,24 @@
         <aside class="level-panel" aria-labelledby="level-title">
           <h2 id="level-title">Nivel</h2>
           <div class="difficulty-controls" aria-label="Dificultad contra la maquina">
-            <button class="difficulty-button" type="button" data-difficulty="easy" aria-pressed="false">Facil</button>
+            <button class="difficulty-button difficulty-button--active" type="button" data-difficulty="easy" aria-pressed="true">Facil</button>
             <button class="difficulty-button" type="button" data-difficulty="medium" aria-pressed="false">Medio</button>
-            <button class="difficulty-button difficulty-button--active" type="button" data-difficulty="advanced" aria-pressed="true">Avanzado</button>
+            <button class="difficulty-button" type="button" data-difficulty="advanced" aria-pressed="false">Avanzado</button>
+          </div>
+
+          <div class="side-panel-section" aria-labelledby="mode-title">
+            <h2 id="mode-title">Modo de juego</h2>
+            <div class="mode-controls" aria-label="Modo de juego">
+              <button class="mode-button mode-button--active" type="button" data-mode="single" aria-pressed="true">1 jugador</button>
+              <button class="mode-button" type="button" data-mode="two" aria-pressed="false">2 jugadores</button>
+            </div>
           </div>
         </aside>
       </section>
 
       <section class="instructions" aria-labelledby="instructions-title">
         <h2 id="instructions-title">Controles</h2>
-        <p id="instructions">1 jugador: usa flechas para mover la pala derecha. La maquina controla la pala izquierda.</p>
+        <p id="instructions">1 jugador: flechas para mover, Shift para pegar con fuerza. La maquina controla la pala izquierda.</p>
       </section>
       <p class="status" id="status">Espacio para pausar.</p>
     </main>
