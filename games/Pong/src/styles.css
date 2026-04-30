@@ -13,7 +13,7 @@ body {
 }
 
 .game-shell {
-  width: min(860px, calc(100% - 24px));
+  width: min(1060px, calc(100% - 24px));
 }
 
 .hud {
@@ -55,6 +55,37 @@ body {
   margin: 10px 0 14px;
 }
 
+.play-area {
+  display: grid;
+  grid-template-columns: minmax(0, 860px) 160px;
+  align-items: start;
+  justify-content: center;
+  gap: 18px;
+}
+
+.court-column {
+  width: 100%;
+}
+
+.level-panel {
+  border: 2px solid #1f5f99;
+  border-radius: 8px;
+  background: #08111f;
+  padding: 14px;
+}
+
+.level-panel h2 {
+  margin: 0 0 12px;
+  color: #ffd447;
+  font-size: 18px;
+  text-align: center;
+}
+
+.difficulty-controls {
+  display: grid;
+  gap: 10px;
+}
+
 button {
   min-width: 112px;
   min-height: 38px;
@@ -77,6 +108,11 @@ button:active {
 .mode-button--active {
   border-color: #ffd447;
   background: #1d1a0d;
+}
+
+.difficulty-button--active {
+  border-color: #8dffb0;
+  background: #102016;
 }
 
 canvas {
@@ -133,5 +169,19 @@ canvas {
   .scoreboard {
     top: 0;
     font-size: 22px;
+  }
+}
+
+@media (max-width: 900px) {
+  .game-shell {
+    width: min(860px, calc(100% - 24px));
+  }
+
+  .play-area {
+    grid-template-columns: 1fr;
+  }
+
+  .difficulty-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
