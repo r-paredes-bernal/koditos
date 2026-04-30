@@ -16,6 +16,7 @@ const paddleMargin = 30;
 const ballSize = 14;
 const winningScore = 3;
 const netGap = 42;
+const maxPowerBoost = 0.42;
 const difficultySettings = {
   easy: {
     label: "Facil",
@@ -63,12 +64,16 @@ const leftPaddle = {
   x: paddleMargin,
   y: canvas.height / 2 - paddleHeight / 2,
   speed: 420,
+  vx: 0,
+  vy: 0,
 };
 
 const rightPaddle = {
   x: canvas.width - paddleMargin - paddleWidth,
   y: canvas.height / 2 - paddleHeight / 2,
   speed: 420,
+  vx: 0,
+  vy: 0,
 };
 
 const ball = {
@@ -115,8 +120,12 @@ function resetBall(direction = Math.random() > 0.5 ? 1 : -1) {
 function resetRound() {
   leftPaddle.x = paddleMargin;
   leftPaddle.y = canvas.height / 2 - paddleHeight / 2;
+  leftPaddle.vx = 0;
+  leftPaddle.vy = 0;
   rightPaddle.x = canvas.width - paddleMargin - paddleWidth;
   rightPaddle.y = canvas.height / 2 - paddleHeight / 2;
+  rightPaddle.vx = 0;
+  rightPaddle.vy = 0;
   resetBall();
 }
 
@@ -161,6 +170,11 @@ function togglePause() {
 }
 
 function movePaddles(deltaTime) {
+  const leftStartX = leftPaddle.x;
+  const leftStartY = leftPaddle.y;
+  const rightStartX = rightPaddle.x;
+  const rightStartY = rightPaddle.y;
+
   if (mode === "single") {
     const aiSettings = difficultySettings[difficulty];
 
@@ -234,6 +248,12 @@ function movePaddles(deltaTime) {
   rightPaddle.y = clamp(rightPaddle.y, 0, canvas.height - paddleHeight);
   leftPaddle.x = clamp(leftPaddle.x, paddleMargin, canvas.width / 2 - netGap - paddleWidth);
   rightPaddle.x = clamp(rightPaddle.x, canvas.width / 2 + netGap, canvas.width - paddleMargin - paddleWidth);
+
+  const safeDeltaTime = Math.max(deltaTime, 0.001);
+  leftPaddle.vx = (leftPaddle.x - leftStartX) / safeDeltaTime;
+  leftPaddle.vy = (leftPaddle.y - leftStartY) / safeDeltaTime;
+  rightPaddle.vx = (rightPaddle.x - rightStartX) / safeDeltaTime;
+  rightPaddle.vy = (rightPaddle.y - rightStartY) / safeDeltaTime;
 }
 
 function overlapsPaddle(paddle) {
@@ -245,14 +265,18 @@ function overlapsPaddle(paddle) {
   );
 }
 
-function bounceFromPaddle(paddle, direction) {
+function bounceFromPaddle(paddle, direction, usePower = true) {
   const paddleCenter = paddle.y + paddleHeight / 2;
   const ballCenter = ball.y + ballSize / 2;
   const hitOffset = (ballCenter - paddleCenter) / (paddleHeight / 2);
+  const forwardVelocity = Math.max(0, paddle.vx * direction);
+  const verticalVelocity = Math.min(Math.abs(paddle.vy), paddle.speed);
+  const powerBoost = usePower ? Math.min(maxPowerBoost, forwardVelocity / 650 + verticalVelocity / 1600) : 0;
+  const outgoingSpeed = 330 * (ball.speedBoost + powerBoost);
 
   ball.speedBoost = Math.min(ball.speedBoost + 0.08, 1.55);
-  ball.vx = 330 * ball.speedBoost * direction;
-  ball.vy = 330 * hitOffset;
+  ball.vx = outgoingSpeed * direction;
+  ball.vy = 330 * hitOffset + paddle.vy * 0.18;
   ball.x = direction > 0 ? paddle.x + paddleWidth : paddle.x - ballSize;
   lastBackWallHit = null;
   assistedWallReturn = null;
