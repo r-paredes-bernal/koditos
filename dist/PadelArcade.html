@@ -1,3 +1,277 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Padel Arcade | IXMAIA Arcade</title>
+    <style>
+:root {
+  color-scheme: dark;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #07070b;
+  color: #f7f7fb;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.game-shell {
+  width: min(1060px, calc(100% - 24px));
+}
+
+.hud {
+  position: relative;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud h1 {
+  margin: 0;
+  color: #ffd447;
+  font-size: 36px;
+}
+
+.back-link {
+  position: absolute;
+  left: 0;
+  color: #9bd8ff;
+  text-decoration: none;
+}
+
+.scoreboard {
+  position: absolute;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  color: #f7f7fb;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.play-area {
+  display: grid;
+  grid-template-columns: minmax(0, 860px) 160px;
+  align-items: start;
+  justify-content: center;
+  gap: 18px;
+}
+
+.court-column {
+  width: 100%;
+}
+
+.level-panel {
+  border: 2px solid #1f5f99;
+  border-radius: 8px;
+  background: #08111f;
+  padding: 14px;
+}
+
+.level-panel h2 {
+  margin: 0 0 12px;
+  color: #ffd447;
+  font-size: 18px;
+  text-align: center;
+}
+
+.difficulty-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.side-panel-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(47, 156, 255, 0.45);
+}
+
+.mode-controls {
+  display: grid;
+  gap: 10px;
+}
+
+button {
+  min-width: 112px;
+  min-height: 38px;
+  border: 2px solid #2f9cff;
+  border-radius: 6px;
+  background: #111827;
+  color: #f7f7fb;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:hover {
+  border-color: #ffd447;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+.mode-button--active {
+  border-color: #ffd447;
+  background: #1d1a0d;
+}
+
+.difficulty-button--active {
+  border-color: #8dffb0;
+  background: #102016;
+}
+
+canvas {
+  width: 100%;
+  aspect-ratio: 800 / 460;
+  display: block;
+  border: 3px solid #2f9cff;
+  background: #02040a;
+  image-rendering: pixelated;
+  touch-action: none;
+  user-select: none;
+}
+
+.touch-power-button {
+  display: none;
+}
+
+.status {
+  min-height: 24px;
+  margin: 12px 0 0;
+  color: #c8c8d4;
+  text-align: center;
+}
+
+.instructions {
+  margin-top: 12px;
+  padding: 12px;
+  border: 2px solid #1f5f99;
+  border-radius: 8px;
+  background: #08111f;
+  text-align: center;
+}
+
+.instructions h2,
+.instructions p {
+  margin: 0;
+}
+
+.instructions h2 {
+  margin-bottom: 6px;
+  color: #ffd447;
+  font-size: 18px;
+}
+
+.instructions p {
+  color: #c8c8d4;
+}
+
+@media (max-width: 560px) {
+  .hud {
+    min-height: 92px;
+    align-items: start;
+  }
+
+  .hud h1 {
+    margin-top: 28px;
+    font-size: 30px;
+  }
+
+  .scoreboard {
+    top: 0;
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 900px) {
+  .game-shell {
+    width: min(860px, calc(100% - 24px));
+  }
+
+  .play-area {
+    grid-template-columns: 1fr;
+  }
+
+  .difficulty-controls,
+  .mode-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mode-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .touch-power-button {
+    display: inline-block;
+    border-color: #ffd447;
+    background: #1d1a0d;
+  }
+}
+
+</style>
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="hud">
+        <a class="back-link" href="../index.html">Menu</a>
+        <h1>Padel Arcade</h1>
+        <div class="scoreboard" aria-label="Marcador">
+          <span id="left-score">0</span>
+          <span aria-hidden="true">:</span>
+          <span id="right-score">0</span>
+        </div>
+      </header>
+
+      <section class="controls" aria-label="Controles del juego">
+        <button id="pause-button" type="button">Pausar</button>
+        <button id="reset-button" type="button">Reiniciar</button>
+        <button class="touch-power-button" id="power-hit-button" type="button">Golpe fuerte</button>
+      </section>
+
+      <section class="play-area" aria-label="Area de juego">
+        <div class="court-column">
+          <canvas id="game" width="800" height="460" aria-label="Juego Padel Arcade"></canvas>
+        </div>
+
+        <aside class="level-panel" aria-labelledby="level-title">
+          <h2 id="level-title">Nivel</h2>
+          <div class="difficulty-controls" aria-label="Dificultad contra la maquina">
+            <button class="difficulty-button difficulty-button--active" type="button" data-difficulty="easy" aria-pressed="true">Facil</button>
+            <button class="difficulty-button" type="button" data-difficulty="medium" aria-pressed="false">Medio</button>
+            <button class="difficulty-button" type="button" data-difficulty="advanced" aria-pressed="false">Avanzado</button>
+          </div>
+
+          <div class="side-panel-section" aria-labelledby="mode-title">
+            <h2 id="mode-title">Modo de juego</h2>
+            <div class="mode-controls" aria-label="Modo de juego">
+              <button class="mode-button mode-button--active" type="button" data-mode="single" aria-pressed="true">1 jugador</button>
+              <button class="mode-button" type="button" data-mode="two" aria-pressed="false">2 jugadores</button>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="instructions" aria-labelledby="instructions-title">
+        <h2 id="instructions-title">Controles</h2>
+        <p id="instructions">1 jugador: flechas para mover, Shift para pegar con fuerza. La maquina controla la pala izquierda.</p>
+      </section>
+      <p class="status" id="status">Espacio para pausar.</p>
+    </main>
+
+    <script>
 const canvas = document.querySelector("#game");
 const context = canvas.getContext("2d");
 const titleElement = document.querySelector(".hud h1");
@@ -1101,3 +1375,7 @@ updateModeButtons();
 updateDifficultyButtons();
 newGame();
 requestAnimationFrame(gameLoop);
+
+</script>
+  </body>
+</html>

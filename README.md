@@ -143,6 +143,61 @@ games/NuevoJuego/
 
 Despues agrega un enlace al nuevo juego en el `index.html` principal.
 
+## Generar standalone
+
+Para crear versiones autocontenidas de los juegos, ejecuta:
+
+```bash
+node scripts/build-standalone.js
+```
+
+El script toma el `index.html`, `src/styles.css` y `src/game.js` de cada juego y
+genera un solo archivo HTML en `dist/`:
+
+```text
+dist/
+  RoboChip.html
+  PadelArcade.html
+```
+
+Estos archivos funcionan solos en el navegador y son utiles para publicarlos como
+sitio estatico o pasarlos como input/output a un asistente que modifique primero
+la capa `GAME_CONFIG`.
+
+## Prompt para asistente
+
+Los standalones incluyen marcadores para ayudar al modelo a ubicar la zona
+editable:
+
+```js
+// === ASSISTANT_EDITABLE_CONFIG_START ===
+const GAME_CONFIG = {
+  // valores editables
+};
+// === ASSISTANT_EDITABLE_CONFIG_END ===
+```
+
+Un flujo recomendado para Responses API es enviar dos bloques:
+
+```text
+PROMPT={{peticion del usuario}}
+CODE={{html standalone completo}}
+```
+
+Instruccion sugerida para el asistente:
+
+```text
+Eres un editor experto de juegos HTML autocontenidos.
+Recibiras PROMPT con la peticion del usuario y CODE con un archivo HTML completo.
+Modifica CODE segun PROMPT y devuelve un unico archivo HTML funcional.
+Prioriza cambios dentro de ASSISTANT_EDITABLE_CONFIG_START y
+ASSISTANT_EDITABLE_CONFIG_END.
+Solo modifica el motor si la peticion no puede resolverse con GAME_CONFIG.
+No agregues dependencias externas.
+No elimines controles existentes.
+Devuelve unicamente el HTML final, sin Markdown ni explicaciones.
+```
+
 ## Como jugar
 
 Abre `index.html` en tu navegador para ver el menu principal.

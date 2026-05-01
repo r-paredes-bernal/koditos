@@ -1,3 +1,398 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RoboChip | IXMAIA Arcade</title>
+    <style>
+:root {
+  color-scheme: dark;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #07070b;
+  color: #f7f7fb;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.game-shell {
+  width: min(760px, calc(100% - 24px));
+  transform: translateY(-20px);
+}
+
+.hud {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  min-height: 52px;
+  width: 100%;
+}
+
+.hud h1,
+.stats p,
+.status {
+  margin: 0;
+}
+
+.hud h1 {
+  text-align: center;
+  color: #8dffb0;
+  font-size: 30px;
+}
+
+.stats p {
+  text-align: right;
+  line-height: 1.45;
+}
+
+.back-link {
+  position: absolute;
+  left: 0;
+  color: #9bd8ff;
+  text-decoration: none;
+}
+
+.stats {
+  position: absolute;
+  right: 0;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.controls button {
+  min-width: 112px;
+  min-height: 38px;
+  border: 2px solid #54ff9f;
+  border-radius: 6px;
+  background: #101b18;
+  color: #f7f7fb;
+  cursor: pointer;
+  font: inherit;
+}
+
+.controls button:hover,
+.difficulty-item:hover,
+.scenario-item:hover {
+  border-color: #ffd447;
+}
+
+.controls button:active,
+.difficulty-item:active,
+.scenario-item:active {
+  transform: translateY(1px);
+}
+
+.play-area {
+  display: grid;
+  grid-template-columns: minmax(0, 520px) 180px;
+  align-items: start;
+  justify-content: center;
+  gap: 18px;
+}
+
+.board-column {
+  width: 100%;
+}
+
+.side-column {
+  display: grid;
+  gap: 12px;
+}
+
+canvas {
+  width: 100%;
+  aspect-ratio: 448 / 480;
+  display: block;
+  border: 3px solid #ff2b5e;
+  background: #020806;
+  image-rendering: pixelated;
+  touch-action: none;
+  user-select: none;
+}
+
+.difficulty-panel,
+.scenario-panel {
+  border: 2px solid #1f9f67;
+  border-radius: 8px;
+  background: #08110f;
+  padding: 14px;
+}
+
+.difficulty-panel h2,
+.scenario-panel h2 {
+  margin: 0 0 12px;
+  color: #8dffb0;
+  font-size: 18px;
+  text-align: center;
+}
+
+.difficulty-list,
+.scenario-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.difficulty-item,
+.scenario-item {
+  width: 100%;
+  min-height: 54px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid #244f3d;
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: #0d1815;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.difficulty-item--active,
+.scenario-item--active {
+  border-color: #ffd447;
+  background: #1b1a0f;
+}
+
+.difficulty-name,
+.scenario-name {
+  color: #f7f7fb;
+  font-weight: 700;
+}
+
+.difficulty-label,
+.scenario-label {
+  color: #9aa6bd;
+  font-size: 13px;
+}
+
+.difficulty-item--active .difficulty-label,
+.scenario-item--active .scenario-label {
+  color: #ffd447;
+}
+
+.sound-button {
+  width: 100%;
+  min-height: 42px;
+  border: 2px solid #54ff9f;
+  border-radius: 6px;
+  background: #101b18;
+  color: #f7f7fb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 22px;
+}
+
+.sound-button:hover {
+  border-color: #ffd447;
+}
+
+.sound-button:active {
+  transform: translateY(1px);
+}
+
+.status {
+  min-height: 24px;
+  margin-top: 12px;
+  color: #c8c8d4;
+  text-align: center;
+}
+
+.touch-pad {
+  display: none;
+  width: 178px;
+  margin: 14px auto 0;
+  grid-template-columns: repeat(3, 54px);
+  grid-template-rows: repeat(3, 48px);
+  gap: 6px;
+  justify-content: center;
+}
+
+.touch-control {
+  border: 2px solid #54ff9f;
+  border-radius: 8px;
+  background: #101b18;
+  color: #f7f7fb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+}
+
+.touch-control:active {
+  border-color: #ffd447;
+  background: #1b1a0f;
+  transform: translateY(1px);
+}
+
+.touch-control--up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.touch-control--left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.touch-control--right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.touch-control--down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+@media (max-width: 760px) {
+  .game-shell {
+    width: min(520px, calc(100% - 24px));
+  }
+
+  .play-area {
+    grid-template-columns: 1fr;
+  }
+
+  .difficulty-panel,
+  .scenario-panel {
+    width: auto;
+  }
+
+  .difficulty-list,
+  .scenario-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .touch-pad {
+    display: grid;
+  }
+}
+
+@media (max-width: 480px) {
+  .hud {
+    font-size: 14px;
+    min-height: 82px;
+    align-items: start;
+  }
+
+  .hud h1 {
+    font-size: 24px;
+    margin-top: 26px;
+  }
+
+  .stats {
+    top: 0;
+  }
+
+  .difficulty-list,
+  .scenario-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+</style>
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="play-area" aria-label="Area de juego">
+        <div class="board-column">
+          <header class="hud">
+            <a class="back-link" href="../index.html">Menu</a>
+            <h1>Robo Chip</h1>
+            <div class="stats">
+              <p>Puntos: <span id="score">0</span></p>
+              <p>Vidas: <span id="lives">3</span></p>
+            </div>
+          </header>
+
+          <div class="controls">
+            <button id="pause-button" type="button">Pausar</button>
+          </div>
+
+          <canvas id="game" width="448" height="480" aria-label="Juego RoboChip"></canvas>
+          <p class="status" id="status">Flechas, WASD o controles tactiles para moverte. Espacio para pausar.</p>
+
+          <div class="touch-pad" aria-label="Controles tactiles">
+            <button class="touch-control touch-control--up" type="button" data-direction="ArrowUp" aria-label="Mover arriba">▲</button>
+            <button class="touch-control touch-control--left" type="button" data-direction="ArrowLeft" aria-label="Mover izquierda">◀</button>
+            <button class="touch-control touch-control--right" type="button" data-direction="ArrowRight" aria-label="Mover derecha">▶</button>
+            <button class="touch-control touch-control--down" type="button" data-direction="ArrowDown" aria-label="Mover abajo">▼</button>
+          </div>
+        </div>
+
+        <div class="side-column">
+          <button class="sound-button" id="mute-button" type="button" aria-label="Mutear sonido" aria-pressed="false">
+            <span aria-hidden="true">🔊</span>
+          </button>
+
+          <aside class="difficulty-panel" aria-labelledby="difficulty-title">
+            <h2 id="difficulty-title">Dificultad</h2>
+            <ol class="difficulty-list">
+              <li>
+                <button class="difficulty-item difficulty-item--active" type="button" data-level="1" aria-pressed="true">
+                  <span class="difficulty-name">Normal</span>
+                  <span class="difficulty-label">Default</span>
+                </button>
+              </li>
+              <li>
+                <button class="difficulty-item" type="button" data-level="2" aria-pressed="false">
+                  <span class="difficulty-name">Media</span>
+                  <span class="difficulty-label">Mas rapido</span>
+                </button>
+              </li>
+              <li>
+                <button class="difficulty-item" type="button" data-level="3" aria-pressed="false">
+                  <span class="difficulty-name">Alta</span>
+                  <span class="difficulty-label">Nuevo enemigo</span>
+                </button>
+              </li>
+            </ol>
+          </aside>
+
+          <aside class="scenario-panel" aria-labelledby="scenario-title">
+            <h2 id="scenario-title">Escenario</h2>
+            <ol class="scenario-list">
+              <li>
+                <button class="scenario-item scenario-item--active" type="button" data-scenario="motherboard" aria-pressed="true">
+                  <span class="scenario-name">Placa Madre</span>
+                  <span class="scenario-label">Circuito clasico</span>
+                </button>
+              </li>
+              <li>
+                <button class="scenario-item" type="button" data-scenario="pizza" aria-pressed="false">
+                  <span class="scenario-name">Pizza Espacial</span>
+                  <span class="scenario-label">Rebanada arcade</span>
+                </button>
+              </li>
+              <li>
+                <button class="scenario-item" type="button" data-scenario="castle" aria-pressed="false">
+                  <span class="scenario-name">Castillo Digital</span>
+                  <span class="scenario-label">Torres firewall</span>
+                </button>
+              </li>
+            </ol>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script>
+(() => {
 const canvas = document.querySelector("#game");
 const context = canvas.getContext("2d");
 const titleElement = document.querySelector(".hud h1");
@@ -119,15 +514,15 @@ const GAME_CONFIG = {
     },
   },
   colors: {
-    boardBackground: "#020806",
-    grid: "rgba(84, 255, 159, 0.12)",
-    pathStroke: "rgba(84, 255, 159, 0.26)",
-    pathNode: "rgba(141, 255, 176, 0.18)",
-    wallFill: "#10261d",
-    wallStroke: "#54ff9f",
-    wallDetail: "rgba(220, 231, 255, 0.28)",
-    pellet: "#ffe7a3",
-    powerPellet: "#50d8ff",
+    boardBackground: "#120206",
+    grid: "rgba(255, 43, 94, 0.15)",
+    pathStroke: "rgba(255, 90, 120, 0.3)",
+    pathNode: "rgba(255, 153, 170, 0.2)",
+    wallFill: "#2b0208",
+    wallStroke: "#ff2b5e",
+    wallDetail: "rgba(255, 220, 228, 0.28)",
+    pellet: "#ff9fb3",
+    powerPellet: "#ff2b5e",
     playerAntenna: "#9bd8ff",
     playerSignal: "#ffd447",
     playerHead: "#8bd3ff",
@@ -1131,3 +1526,8 @@ updateDifficultyButtons();
 updateScenarioButtons();
 newGame();
 requestAnimationFrame(gameLoop);
+
+})();
+</script>
+  </body>
+</html>
