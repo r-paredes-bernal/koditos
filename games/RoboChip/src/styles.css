@@ -110,6 +110,8 @@ canvas {
   border: 3px solid #54ff9f;
   background: #020806;
   image-rendering: pixelated;
+  touch-action: none;
+  user-select: none;
 }
 
 .difficulty-panel,
@@ -204,6 +206,52 @@ canvas {
   text-align: center;
 }
 
+.touch-pad {
+  display: none;
+  width: 178px;
+  margin: 14px auto 0;
+  grid-template-columns: repeat(3, 54px);
+  grid-template-rows: repeat(3, 48px);
+  gap: 6px;
+  justify-content: center;
+}
+
+.touch-control {
+  border: 2px solid #54ff9f;
+  border-radius: 8px;
+  background: #101b18;
+  color: #f7f7fb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+}
+
+.touch-control:active {
+  border-color: #ffd447;
+  background: #1b1a0f;
+  transform: translateY(1px);
+}
+
+.touch-control--up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.touch-control--left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.touch-control--right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.touch-control--down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
 @media (max-width: 760px) {
   .game-shell {
     width: min(520px, calc(100% - 24px));
@@ -221,6 +269,10 @@ canvas {
   .difficulty-list,
   .scenario-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .touch-pad {
+    display: grid;
   }
 }
 

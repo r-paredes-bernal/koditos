@@ -6,6 +6,7 @@ const statusElement = document.querySelector("#status");
 const instructionsElement = document.querySelector("#instructions");
 const pauseButton = document.querySelector("#pause-button");
 const resetButton = document.querySelector("#reset-button");
+const powerHitButton = document.querySelector("#power-hit-button");
 const modeButtons = document.querySelectorAll(".mode-button[data-mode]");
 const difficultyButtons = document.querySelectorAll(".difficulty-button[data-difficulty]");
 
@@ -71,6 +72,7 @@ let matchWinner = null;
 let directionShiftTimer = 0;
 let powerUpSpawnTimer = 2.5;
 let dashEffects = [];
+let touchControl = null;
 
 const dashCooldowns = {
   left: 0,
@@ -125,7 +127,7 @@ function updateHud(message) {
   statusElement.textContent = message;
   instructionsElement.textContent =
     mode === "single"
-      ? `1 jugador: flechas para mover, Shift para pegar con fuerza. Dificultad ${difficultySettings[difficulty].label}.`
+      ? `1 jugador: flechas o dedo para mover, Shift o boton para pegar con fuerza. Dificultad ${difficultySettings[difficulty].label}.`
       : "2 jugadores: izquierda W/A/S/D + Q para pegar fuerte, derecha flechas + Shift para pegar fuerte.";
   pauseButton.textContent = gameState === "paused" ? "Continuar" : "Pausar";
 }
@@ -271,6 +273,11 @@ function movePaddles(deltaTime) {
     if (keys.has("arrowright")) {
       rightPaddle.x += rightPaddle.speed * deltaTime;
     }
+
+    if (touchControl) {
+      rightPaddle.x = touchControl.x - paddleWidth / 2;
+      rightPaddle.y = touchControl.y - paddleHeight / 2;
+    }
   } else {
     if (keys.has("w")) {
       leftPaddle.y -= leftPaddle.speed * deltaTime;
@@ -318,6 +325,27 @@ function movePaddles(deltaTime) {
   leftPaddle.vy = (leftPaddle.y - leftStartY) / safeDeltaTime;
   rightPaddle.vx = (rightPaddle.x - rightStartX) / safeDeltaTime;
   rightPaddle.vy = (rightPaddle.y - rightStartY) / safeDeltaTime;
+}
+
+function getCanvasPoint(event) {
+  const rect = canvas.getBoundingClientRect();
+
+  return {
+    x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+    y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+  };
+}
+
+function updateTouchControl(event) {
+  if (mode !== "single") {
+    return;
+  }
+
+  const point = getCanvasPoint(event);
+  touchControl = {
+    x: clamp(point.x, canvas.width / 2 + netGap, canvas.width - paddleMargin),
+    y: clamp(point.y, paddleHeight / 2, canvas.height - paddleHeight / 2),
+  };
 }
 
 function shouldAiUsePowerHit(aiSettings) {
@@ -875,6 +903,44 @@ window.addEventListener("keyup", (event) => {
 
 pauseButton.addEventListener("click", togglePause);
 resetButton.addEventListener("click", newGame);
+powerHitButton.addEventListener("click", () => {
+  requestDash("right");
+});
+
+canvas.addEventListener("pointerdown", (event) => {
+  if (mode !== "single") {
+    return;
+  }
+
+  event.preventDefault();
+  canvas.setPointerCapture(event.pointerId);
+  updateTouchControl(event);
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (!canvas.hasPointerCapture(event.pointerId)) {
+    return;
+  }
+
+  event.preventDefault();
+  updateTouchControl(event);
+});
+
+canvas.addEventListener("pointerup", (event) => {
+  if (canvas.hasPointerCapture(event.pointerId)) {
+    canvas.releasePointerCapture(event.pointerId);
+  }
+
+  touchControl = null;
+});
+
+canvas.addEventListener("pointercancel", (event) => {
+  if (canvas.hasPointerCapture(event.pointerId)) {
+    canvas.releasePointerCapture(event.pointerId);
+  }
+
+  touchControl = null;
+});
 
 modeButtons.forEach((button) => {
   button.addEventListener("click", () => {

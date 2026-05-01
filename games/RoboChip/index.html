@@ -24,7 +24,14 @@
           </div>
 
           <canvas id="game" width="448" height="480" aria-label="Juego RoboChip"></canvas>
-          <p class="status" id="status">Flechas o WASD para moverte. Espacio para pausar.</p>
+          <p class="status" id="status">Flechas, WASD o controles tactiles para moverte. Espacio para pausar.</p>
+
+          <div class="touch-pad" aria-label="Controles tactiles">
+            <button class="touch-control touch-control--up" type="button" data-direction="ArrowUp" aria-label="Mover arriba">▲</button>
+            <button class="touch-control touch-control--left" type="button" data-direction="ArrowLeft" aria-label="Mover izquierda">◀</button>
+            <button class="touch-control touch-control--right" type="button" data-direction="ArrowRight" aria-label="Mover derecha">▶</button>
+            <button class="touch-control touch-control--down" type="button" data-direction="ArrowDown" aria-label="Mover abajo">▼</button>
+          </div>
         </div>
 
         <div class="side-column">

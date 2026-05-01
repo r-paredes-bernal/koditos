@@ -7,6 +7,7 @@ const pauseButton = document.querySelector("#pause-button");
 const muteButton = document.querySelector("#mute-button");
 const difficultyButtons = document.querySelectorAll(".difficulty-item[data-level]");
 const scenarioButtons = document.querySelectorAll(".scenario-item[data-scenario]");
+const touchButtons = document.querySelectorAll(".touch-control[data-direction]");
 
 const tileSize = 32;
 const scenarioMaps = {
@@ -123,6 +124,7 @@ let currentScenario = "motherboard";
 let shakeTime = 0;
 let audioContext = null;
 let isMuted = false;
+let touchStart = null;
 const impactEffects = [];
 
 const player = {
@@ -209,7 +211,7 @@ function newGame() {
   resetPellets();
   buildDrones();
   resetPositions();
-  updateHud(`${settings.message} Flechas o WASD para moverte.`);
+  updateHud(`${settings.message} Flechas, WASD o dedo para moverte.`);
 }
 
 function updateHud(message) {
@@ -320,7 +322,47 @@ function togglePause() {
 
   gameState = gameState === "playing" ? "paused" : "playing";
   playSound("pause");
-  updateHud(gameState === "paused" ? "Pausa. Espacio o boton para continuar." : "Flechas o WASD para moverte. Espacio para pausar.");
+  updateHud(gameState === "paused" ? "Pausa. Espacio o boton para continuar." : "Flechas, WASD o dedo para moverte.");
+}
+
+function setPlayerDirection(direction) {
+  if (!direction) {
+    return;
+  }
+
+  if (gameState === "paused") {
+    return;
+  }
+
+  if (gameState === "ready" || gameState === "gameOver" || gameState === "won") {
+    newGame();
+  }
+
+  player.nextDirection = direction;
+}
+
+function getCanvasPoint(event) {
+  const rect = canvas.getBoundingClientRect();
+
+  return {
+    x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+    y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+  };
+}
+
+function setDirectionFromSwipe(start, end) {
+  const deltaX = end.x - start.x;
+  const deltaY = end.y - start.y;
+
+  if (Math.hypot(deltaX, deltaY) < 18) {
+    return;
+  }
+
+  setPlayerDirection(
+    Math.abs(deltaX) > Math.abs(deltaY)
+      ? deltaX > 0 ? directions.ArrowRight : directions.ArrowLeft
+      : deltaY > 0 ? directions.ArrowDown : directions.ArrowUp
+  );
 }
 
 function updateDifficultyButtons() {
@@ -867,7 +909,7 @@ window.addEventListener("keydown", (event) => {
 
   if (requestedDirection) {
     event.preventDefault();
-    player.nextDirection = requestedDirection;
+    setPlayerDirection(requestedDirection);
   }
 
   if (event.code === "Space" && (gameState === "playing" || gameState === "paused")) {
@@ -890,6 +932,59 @@ pauseButton.addEventListener("click", () => {
   }
 
   togglePause();
+});
+
+canvas.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  ensureAudio();
+  canvas.setPointerCapture(event.pointerId);
+  touchStart = getCanvasPoint(event);
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (!touchStart || !canvas.hasPointerCapture(event.pointerId)) {
+    return;
+  }
+
+  event.preventDefault();
+  const point = getCanvasPoint(event);
+  setDirectionFromSwipe(touchStart, point);
+});
+
+canvas.addEventListener("pointerup", (event) => {
+  if (touchStart) {
+    setDirectionFromSwipe(touchStart, getCanvasPoint(event));
+  }
+
+  if (canvas.hasPointerCapture(event.pointerId)) {
+    canvas.releasePointerCapture(event.pointerId);
+  }
+
+  touchStart = null;
+});
+
+canvas.addEventListener("pointercancel", (event) => {
+  if (canvas.hasPointerCapture(event.pointerId)) {
+    canvas.releasePointerCapture(event.pointerId);
+  }
+
+  touchStart = null;
+});
+
+touchButtons.forEach((button) => {
+  const direction = directions[button.dataset.direction];
+
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    ensureAudio();
+    setPlayerDirection(direction);
+  });
+
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    ensureAudio();
+    setPlayerDirection(direction);
+  });
 });
 
 muteButton.addEventListener("click", () => {

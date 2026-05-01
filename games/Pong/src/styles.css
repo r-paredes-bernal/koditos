@@ -133,6 +133,12 @@ canvas {
   border: 3px solid #2f9cff;
   background: #02040a;
   image-rendering: pixelated;
+  touch-action: none;
+  user-select: none;
+}
+
+.touch-power-button {
+  display: none;
 }
 
 .status {
@@ -199,5 +205,11 @@ canvas {
 
   .mode-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .touch-power-button {
+    display: inline-block;
+    border-color: #ffd447;
+    background: #1d1a0d;
   }
 }
