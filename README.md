@@ -23,6 +23,34 @@ principales:
 - `src/styles.css`: apariencia visual, layout responsive y estilo arcade.
 - `src/game.js`: estado del juego, controles, fisicas, colisiones, dibujo y loop.
 
+## Capa de configuracion
+
+RoboChip y Padel Arcade ya incluyen una primera capa de configuracion en sus
+archivos `game.js` mediante el objeto `GAME_CONFIG`.
+
+Esta capa concentra valores que un asistente podria modificar con menos riesgo:
+
+- Titulo del juego.
+- Vidas iniciales.
+- Posicion inicial del jugador.
+- Drones, colores y puntos de dispersion.
+- Niveles de dificultad.
+- Escenarios y mapas.
+- Modos de juego.
+- Marcador objetivo.
+- Velocidades, tamanos y reglas de power-ups.
+- Colores principales del canvas.
+- Mensajes de estado y textos del overlay.
+
+La idea es separar dos responsabilidades:
+
+- Configuracion: valores editables para personalizar el juego.
+- Motor: movimiento, colisiones, audio, render, controles y reglas base.
+
+Esto permite que un asistente pueda tomar un juego base y aplicar cambios del
+usuario tocando primero `GAME_CONFIG`. Solo deberia tocar el motor cuando el
+usuario pida una mecanica nueva que no exista en la plantilla.
+
 ## Estructura
 
 ```text

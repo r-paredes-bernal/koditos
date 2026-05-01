@@ -1,5 +1,6 @@
 const canvas = document.querySelector("#game");
 const context = canvas.getContext("2d");
+const titleElement = document.querySelector(".hud h1");
 const scoreElement = document.querySelector("#score");
 const livesElement = document.querySelector("#lives");
 const statusElement = document.querySelector("#status");
@@ -9,60 +10,156 @@ const difficultyButtons = document.querySelectorAll(".difficulty-item[data-level
 const scenarioButtons = document.querySelectorAll(".scenario-item[data-scenario]");
 const touchButtons = document.querySelectorAll(".touch-control[data-direction]");
 
-const tileSize = 32;
-const scenarioMaps = {
-  motherboard: [
-    "##############",
-    "#o....##....o#",
-    "#.##..##..##.#",
-    "#o..........o#",
-    "###.##..##.###",
-    "#...#....#...#",
-    "#.###.##.###.#",
-    "#......#.....#",
-    "#.###.##.###.#",
-    "#...#....#...#",
-    "###.##..##.###",
-    "#............#",
-    "#.##..##..##.#",
-    "#o....##....o#",
-    "##############",
+const GAME_CONFIG = {
+  title: "Robo Chip",
+  tileSize: 32,
+  defaultLevel: 1,
+  defaultScenario: "motherboard",
+  player: {
+    start: { x: 1, y: 1 },
+    lives: 3,
+    defaultSpeed: 150,
+  },
+  drones: [
+    { x: 12, y: 13, color: "#ff4b67", scatter: { x: 12, y: 1 } },
+    { x: 12, y: 1, color: "#50d8ff", scatter: { x: 1, y: 13 } },
+    { x: 1, y: 13, color: "#ff9f43", scatter: { x: 12, y: 13 } },
+    { x: 1, y: 3, color: "#c77dff", scatter: { x: 1, y: 1 } },
   ],
-  pizza: [
-    "##############",
-    "#o..........o#",
-    "#.##.####.##.#",
-    "#o....##.....#",
-    "###.#....#.###",
-    "xx#........#xx",
-    "xx##.####.##xx",
-    "xxx#......#xxx",
-    "xx##.####.##xx",
-    "xx#........#xx",
-    "###.#.##.#.###",
-    "#............#",
-    "#.##.####.##.#",
-    "#o..........o#",
-    "##############",
-  ],
-  castle: [
-    "##.########.##",
-    "#o..........o#",
-    "#.###.##.###.#",
-    "#o..........o#",
-    "###.##..##.###",
-    "#...#....#...#",
-    "#.#.######.#.#",
-    "#.#........#.#",
-    "#.#.######.#.#",
-    "#...#....#...#",
-    "###.##..##.###",
-    "#............#",
-    "#.###.##.###.#",
-    "#o..........o#",
-    "##.########.##",
-  ],
+  levels: {
+    1: {
+      name: "Normal",
+      label: "Default",
+      message: "Nivel 1: sistema estable.",
+      playerSpeed: 150,
+      droneSpeed: 104,
+      droneCount: 3,
+    },
+    2: {
+      name: "Media",
+      label: "Mas rapido",
+      message: "Nivel 2: drones y robot mas rapidos.",
+      playerSpeed: 176,
+      droneSpeed: 132,
+      droneCount: 3,
+    },
+    3: {
+      name: "Alta",
+      label: "Nuevo enemigo",
+      message: "Nivel 3: velocidad alta y un dron extra.",
+      playerSpeed: 176,
+      droneSpeed: 132,
+      droneCount: 4,
+    },
+  },
+  scenarios: {
+    motherboard: {
+      name: "Placa Madre",
+      label: "Circuito clasico",
+      map: [
+        "##############",
+        "#o....##....o#",
+        "#.##..##..##.#",
+        "#o..........o#",
+        "###.##..##.###",
+        "#...#....#...#",
+        "#.###.##.###.#",
+        "#......#.....#",
+        "#.###.##.###.#",
+        "#...#....#...#",
+        "###.##..##.###",
+        "#............#",
+        "#.##..##..##.#",
+        "#o....##....o#",
+        "##############",
+      ],
+    },
+    pizza: {
+      name: "Pizza Espacial",
+      label: "Rebanada arcade",
+      map: [
+        "##############",
+        "#o..........o#",
+        "#.##.####.##.#",
+        "#o....##.....#",
+        "###.#....#.###",
+        "xx#........#xx",
+        "xx##.####.##xx",
+        "xxx#......#xxx",
+        "xx##.####.##xx",
+        "xx#........#xx",
+        "###.#.##.#.###",
+        "#............#",
+        "#.##.####.##.#",
+        "#o..........o#",
+        "##############",
+      ],
+    },
+    castle: {
+      name: "Castillo Digital",
+      label: "Torres firewall",
+      map: [
+        "##.########.##",
+        "#o..........o#",
+        "#.###.##.###.#",
+        "#o..........o#",
+        "###.##..##.###",
+        "#...#....#...#",
+        "#.#.######.#.#",
+        "#.#........#.#",
+        "#.#.######.#.#",
+        "#...#....#...#",
+        "###.##..##.###",
+        "#............#",
+        "#.###.##.###.#",
+        "#o..........o#",
+        "##.########.##",
+      ],
+    },
+  },
+  colors: {
+    boardBackground: "#020806",
+    grid: "rgba(84, 255, 159, 0.12)",
+    pathStroke: "rgba(84, 255, 159, 0.26)",
+    pathNode: "rgba(141, 255, 176, 0.18)",
+    wallFill: "#10261d",
+    wallStroke: "#54ff9f",
+    wallDetail: "rgba(220, 231, 255, 0.28)",
+    pellet: "#ffe7a3",
+    powerPellet: "#50d8ff",
+    playerAntenna: "#9bd8ff",
+    playerSignal: "#ffd447",
+    playerHead: "#8bd3ff",
+    playerFace: "#101014",
+    playerBody: "#d7dde8",
+    playerBodyStroke: "#8fa3c8",
+    droneFrame: "#9aa6bd",
+    droneBody: "#151823",
+    droneLight: "#9dffcb",
+    frightenedDrone: "#273dff",
+    frightenedLight: "#f7f7fb",
+    impactSpark: "#ffd447",
+    overlay: "rgba(0, 0, 0, 0.62)",
+    overlayTitle: "#ffd447",
+    overlayText: "#f7f7fb",
+  },
+  messages: {
+    ready: "Flechas, WASD o dedo para moverte.",
+    paused: "Pausa. Espacio o boton para continuar.",
+    powerActive: "Poder activo: puedes destruir drones.",
+    droneDestroyed: "Drone destruido. Sigue asi.",
+    gameOver: "Game over. Presiona Enter para reiniciar.",
+    lifeLost: "Perdiste una vida. Sigue jugando.",
+    won: "Ganaste. Presiona Enter para jugar otra vez.",
+    overlayPaused: "PAUSA",
+    overlayWon: "GANASTE",
+    overlayGameOver: "GAME OVER",
+    overlayPauseHint: "Espacio o boton para continuar",
+    overlayRestartHint: "Presiona Enter para reiniciar",
+  },
 };
+
+const tileSize = GAME_CONFIG.tileSize;
 
 const directions = {
   ArrowUp: { x: 0, y: -1 },
@@ -82,45 +179,20 @@ const oppositeDirections = new Map([
   ["1,0", "-1,0"],
 ]);
 
-const startPlayer = { x: 1, y: 1 };
-const startGhosts = [
-  { x: 12, y: 13, color: "#ff4b67", scatter: { x: 12, y: 1 } },
-  { x: 12, y: 1, color: "#50d8ff", scatter: { x: 1, y: 13 } },
-  { x: 1, y: 13, color: "#ff9f43", scatter: { x: 12, y: 13 } },
-  { x: 1, y: 3, color: "#c77dff", scatter: { x: 1, y: 1 } },
-];
-
-const difficultySettings = {
-  1: {
-    message: "Nivel 1: sistema estable.",
-    playerSpeed: 150,
-    droneSpeed: 104,
-    droneCount: 3,
-  },
-  2: {
-    message: "Nivel 2: drones y robot mas rapidos.",
-    playerSpeed: 176,
-    droneSpeed: 132,
-    droneCount: 3,
-  },
-  3: {
-    message: "Nivel 3: velocidad alta y un dron extra.",
-    playerSpeed: 176,
-    droneSpeed: 132,
-    droneCount: 4,
-  },
-};
+const startPlayer = GAME_CONFIG.player.start;
+const startGhosts = GAME_CONFIG.drones;
+const difficultySettings = GAME_CONFIG.levels;
 
 let score = 0;
-let lives = 3;
+let lives = GAME_CONFIG.player.lives;
 let pellets = new Set();
 let powerPellets = new Set();
 let frightenedUntil = 0;
 let gameState = "ready";
 let lastTime = 0;
 let animationTick = 0;
-let currentLevel = 1;
-let currentScenario = "motherboard";
+let currentLevel = GAME_CONFIG.defaultLevel;
+let currentScenario = GAME_CONFIG.defaultScenario;
 let shakeTime = 0;
 let audioContext = null;
 let isMuted = false;
@@ -134,10 +206,38 @@ const player = {
   y: startPlayer.y * tileSize,
   direction: { x: 0, y: 0 },
   nextDirection: { x: 0, y: 0 },
-  speed: 150,
+  speed: GAME_CONFIG.player.defaultSpeed,
 };
 
 let ghosts = [];
+
+function applyGameConfig() {
+  document.title = `${GAME_CONFIG.title} | IXMAIA Arcade`;
+  titleElement.textContent = GAME_CONFIG.title;
+  livesElement.textContent = GAME_CONFIG.player.lives;
+
+  difficultyButtons.forEach((button) => {
+    const settings = difficultySettings[button.dataset.level];
+
+    if (!settings) {
+      return;
+    }
+
+    button.querySelector(".difficulty-name").textContent = settings.name;
+    button.querySelector(".difficulty-label").textContent = settings.label;
+  });
+
+  scenarioButtons.forEach((button) => {
+    const scenario = GAME_CONFIG.scenarios[button.dataset.scenario];
+
+    if (!scenario) {
+      return;
+    }
+
+    button.querySelector(".scenario-name").textContent = scenario.name;
+    button.querySelector(".scenario-label").textContent = scenario.label;
+  });
+}
 
 function createDrone(ghost) {
   const settings = difficultySettings[currentLevel];
@@ -203,7 +303,7 @@ function newGame() {
   const settings = difficultySettings[currentLevel];
 
   score = 0;
-  lives = 3;
+  lives = GAME_CONFIG.player.lives;
   frightenedUntil = 0;
   shakeTime = 0;
   impactEffects.length = 0;
@@ -211,7 +311,7 @@ function newGame() {
   resetPellets();
   buildDrones();
   resetPositions();
-  updateHud(`${settings.message} Flechas, WASD o dedo para moverte.`);
+  updateHud(`${settings.message} ${GAME_CONFIG.messages.ready}`);
 }
 
 function updateHud(message) {
@@ -322,7 +422,7 @@ function togglePause() {
 
   gameState = gameState === "playing" ? "paused" : "playing";
   playSound("pause");
-  updateHud(gameState === "paused" ? "Pausa. Espacio o boton para continuar." : "Flechas, WASD o dedo para moverte.");
+  updateHud(gameState === "paused" ? GAME_CONFIG.messages.paused : GAME_CONFIG.messages.ready);
 }
 
 function setPlayerDirection(direction) {
@@ -380,7 +480,7 @@ function setDifficulty(level) {
 }
 
 function getCurrentMap() {
-  return scenarioMaps[currentScenario];
+  return GAME_CONFIG.scenarios[currentScenario].map;
 }
 
 function updateScenarioButtons() {
@@ -503,7 +603,7 @@ function updatePlayer(deltaTime) {
     score += 50;
     frightenedUntil = Date.now() + 7000;
     playSound("power");
-    updateHud("Poder activo: puedes destruir drones.");
+    updateHud(GAME_CONFIG.messages.powerActive);
   }
 }
 
@@ -558,7 +658,11 @@ function handleCollisions() {
     }
 
     collisionHandled = true;
-    spawnImpactEffect(player.x + tileSize / 2, player.y + tileSize / 2, frightened ? "#9bd8ff" : "#ff4b67");
+    spawnImpactEffect(
+      player.x + tileSize / 2,
+      player.y + tileSize / 2,
+      frightened ? GAME_CONFIG.colors.playerAntenna : ghost.color
+    );
 
     if (frightened) {
       score += 200;
@@ -568,7 +672,7 @@ function handleCollisions() {
       ghost.row = startGhost.y;
       ghost.x = ghost.col * tileSize;
       ghost.y = ghost.row * tileSize;
-      updateHud("Drone destruido. Sigue asi.");
+      updateHud(GAME_CONFIG.messages.droneDestroyed);
       return;
     }
 
@@ -578,12 +682,12 @@ function handleCollisions() {
     if (lives <= 0) {
       gameState = "gameOver";
       playSound("lose");
-      updateHud("Game over. Presiona Enter para reiniciar.");
+      updateHud(GAME_CONFIG.messages.gameOver);
       return;
     }
 
     resetPositions();
-    updateHud("Perdiste una vida. Sigue jugando.");
+    updateHud(GAME_CONFIG.messages.lifeLost);
   });
 }
 
@@ -591,7 +695,7 @@ function checkWin() {
   if (pellets.size === 0 && powerPellets.size === 0) {
     gameState = "won";
     playSound("win");
-    updateHud("Ganaste. Presiona Enter para jugar otra vez.");
+    updateHud(GAME_CONFIG.messages.won);
   }
 }
 
@@ -612,11 +716,12 @@ function update(deltaTime) {
 
 function drawMap() {
   const map = getCurrentMap();
+  const colors = GAME_CONFIG.colors;
 
-  context.fillStyle = "#020806";
+  context.fillStyle = colors.boardBackground;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  context.strokeStyle = "rgba(84, 255, 159, 0.12)";
+  context.strokeStyle = colors.grid;
   context.lineWidth = 1;
   for (let x = tileSize / 2; x < canvas.width; x += tileSize) {
     context.beginPath();
@@ -643,7 +748,7 @@ function drawMap() {
       }
 
       if (tile !== "#") {
-        context.strokeStyle = "rgba(84, 255, 159, 0.26)";
+        context.strokeStyle = colors.pathStroke;
         context.lineWidth = 3;
         context.beginPath();
         context.moveTo(x + tileSize / 2, y + 4);
@@ -652,17 +757,17 @@ function drawMap() {
         context.lineTo(x + tileSize - 4, y + tileSize / 2);
         context.stroke();
 
-        context.fillStyle = "rgba(141, 255, 176, 0.18)";
+        context.fillStyle = colors.pathNode;
         context.fillRect(x + tileSize / 2 - 2, y + tileSize / 2 - 2, 4, 4);
         continue;
       }
 
-      context.fillStyle = "#10261d";
+      context.fillStyle = colors.wallFill;
       context.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
-      context.strokeStyle = "#54ff9f";
+      context.strokeStyle = colors.wallStroke;
       context.strokeRect(x + 4, y + 4, tileSize - 8, tileSize - 8);
 
-      context.strokeStyle = "rgba(220, 231, 255, 0.28)";
+      context.strokeStyle = colors.wallDetail;
       context.lineWidth = 1;
       context.beginPath();
       context.moveTo(x + 8, y + 9);
@@ -675,7 +780,7 @@ function drawMap() {
 }
 
 function drawPellets() {
-  context.fillStyle = "#ffe7a3";
+  context.fillStyle = GAME_CONFIG.colors.pellet;
 
   for (const pellet of pellets) {
     const [col, row] = pellet.split(",").map(Number);
@@ -686,7 +791,7 @@ function drawPellets() {
 
   for (const pellet of powerPellets) {
     const [col, row] = pellet.split(",").map(Number);
-    context.fillStyle = "#50d8ff";
+    context.fillStyle = GAME_CONFIG.colors.powerPellet;
     context.beginPath();
     context.arc(col * tileSize + tileSize / 2, row * tileSize + tileSize / 2, 8, 0, Math.PI * 2);
     context.fill();
@@ -708,6 +813,7 @@ function roundedRectangle(x, y, width, height, radius) {
 }
 
 function drawPlayer() {
+  const colors = GAME_CONFIG.colors;
   const centerX = player.x + tileSize / 2;
   const centerY = player.y + tileSize / 2;
   const bob = Math.sin(animationTick * 12) * 1.5;
@@ -717,42 +823,42 @@ function drawPlayer() {
   context.save();
   context.translate(centerX, centerY + bob);
 
-  context.strokeStyle = "#9bd8ff";
+  context.strokeStyle = colors.playerAntenna;
   context.lineWidth = 2;
   context.beginPath();
   context.moveTo(0, -13);
   context.lineTo(0, -18);
   context.stroke();
 
-  context.fillStyle = "#ffd447";
+  context.fillStyle = colors.playerSignal;
   context.beginPath();
   context.arc(0, -20, 3, 0, Math.PI * 2);
   context.fill();
 
-  context.fillStyle = "#8bd3ff";
-  context.strokeStyle = "#f7f7fb";
+  context.fillStyle = colors.playerHead;
+  context.strokeStyle = colors.overlayText;
   context.lineWidth = 2;
   roundedRectangle(-11, -13, 22, 18, 5);
   context.fill();
   context.stroke();
 
-  context.fillStyle = "#101014";
+  context.fillStyle = colors.playerFace;
   context.beginPath();
   context.arc(-5 + eyeOffsetX, -5 + eyeOffsetY, 2.4, 0, Math.PI * 2);
   context.arc(5 + eyeOffsetX, -5 + eyeOffsetY, 2.4, 0, Math.PI * 2);
   context.fill();
 
-  context.fillStyle = "#dce7ff";
+  context.fillStyle = colors.overlayText;
   context.fillRect(-5, 1, 10, 2);
 
-  context.fillStyle = "#d7dde8";
-  context.strokeStyle = "#8fa3c8";
+  context.fillStyle = colors.playerBody;
+  context.strokeStyle = colors.playerBodyStroke;
   context.lineWidth = 2;
   roundedRectangle(-9, 6, 18, 14, 4);
   context.fill();
   context.stroke();
 
-  context.strokeStyle = "#8bd3ff";
+  context.strokeStyle = colors.playerHead;
   context.beginPath();
   context.moveTo(-12, 9);
   context.lineTo(-16, 15);
@@ -760,7 +866,7 @@ function drawPlayer() {
   context.lineTo(16, 15);
   context.stroke();
 
-  context.fillStyle = "#ffd447";
+  context.fillStyle = colors.playerSignal;
   context.beginPath();
   context.arc(-6, 22, 4, 0, Math.PI * 2);
   context.arc(6, 22, 4, 0, Math.PI * 2);
@@ -770,17 +876,18 @@ function drawPlayer() {
 }
 
 function drawDrone(ghost) {
+  const colors = GAME_CONFIG.colors;
   const frightened = Date.now() < frightenedUntil;
   const x = ghost.x + tileSize / 2;
   const y = ghost.y + tileSize / 2;
   const rotorPulse = Math.abs(Math.sin(animationTick * 18)) * 2;
-  const bodyColor = frightened ? "#273dff" : ghost.color;
-  const lightColor = frightened ? "#f7f7fb" : "#9dffcb";
+  const bodyColor = frightened ? colors.frightenedDrone : ghost.color;
+  const lightColor = frightened ? colors.frightenedLight : colors.droneLight;
 
   context.save();
   context.translate(x, y);
 
-  context.strokeStyle = "#9aa6bd";
+  context.strokeStyle = colors.droneFrame;
   context.lineWidth = 3;
   context.beginPath();
   context.moveTo(-9, -5);
@@ -793,7 +900,7 @@ function drawDrone(ghost) {
   context.lineTo(17, 14);
   context.stroke();
 
-  context.strokeStyle = frightened ? "#9bd8ff" : "#dce7ff";
+  context.strokeStyle = frightened ? colors.playerAntenna : colors.overlayText;
   context.lineWidth = 2;
   [
     [-18, -14],
@@ -809,7 +916,7 @@ function drawDrone(ghost) {
     context.stroke();
   });
 
-  context.fillStyle = "#151823";
+  context.fillStyle = colors.droneBody;
   roundedRectangle(-12, -9, 24, 18, 5);
   context.fill();
   context.strokeStyle = bodyColor;
@@ -843,7 +950,7 @@ function drawImpactEffects() {
     context.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
     context.stroke();
 
-    context.fillStyle = "#ffd447";
+    context.fillStyle = GAME_CONFIG.colors.impactSpark;
     for (let index = 0; index < 8; index += 1) {
       const angle = (Math.PI * 2 * index) / 8 + progress * 1.2;
       const sparkDistance = 10 + progress * 22;
@@ -862,18 +969,23 @@ function drawOverlay() {
     return;
   }
 
-  context.fillStyle = "rgba(0, 0, 0, 0.62)";
+  context.fillStyle = GAME_CONFIG.colors.overlay;
   context.fillRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "#ffd447";
+  context.fillStyle = GAME_CONFIG.colors.overlayTitle;
   context.textAlign = "center";
   context.font = "bold 34px Arial";
 
-  const text = gameState === "paused" ? "PAUSA" : gameState === "won" ? "GANASTE" : "GAME OVER";
-  const hint = gameState === "paused" ? "Espacio o boton para continuar" : "Presiona Enter para reiniciar";
+  const text =
+    gameState === "paused"
+      ? GAME_CONFIG.messages.overlayPaused
+      : gameState === "won"
+        ? GAME_CONFIG.messages.overlayWon
+        : GAME_CONFIG.messages.overlayGameOver;
+  const hint = gameState === "paused" ? GAME_CONFIG.messages.overlayPauseHint : GAME_CONFIG.messages.overlayRestartHint;
 
   context.fillText(text, canvas.width / 2, canvas.height / 2 - 8);
 
-  context.fillStyle = "#f7f7fb";
+  context.fillStyle = GAME_CONFIG.colors.overlayText;
   context.font = "16px Arial";
   context.fillText(hint, canvas.width / 2, canvas.height / 2 + 26);
 }
@@ -1011,6 +1123,7 @@ scenarioButtons.forEach((button) => {
   });
 });
 
+applyGameConfig();
 updateMuteButton();
 updateDifficultyButtons();
 updateScenarioButtons();

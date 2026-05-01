@@ -1,5 +1,6 @@
 const canvas = document.querySelector("#game");
 const context = canvas.getContext("2d");
+const titleElement = document.querySelector(".hud h1");
 const leftScoreElement = document.querySelector("#left-score");
 const rightScoreElement = document.querySelector("#right-score");
 const statusElement = document.querySelector("#status");
@@ -10,54 +11,150 @@ const powerHitButton = document.querySelector("#power-hit-button");
 const modeButtons = document.querySelectorAll(".mode-button[data-mode]");
 const difficultyButtons = document.querySelectorAll(".difficulty-button[data-difficulty]");
 
-const keys = new Set();
-const paddleWidth = 14;
-const paddleHeight = 92;
-const paddleMargin = 30;
-const ballSize = 14;
-const winningScore = 3;
-const netGap = 42;
-const maxPowerBoost = 0.42;
-const maxBallSpeed = 760;
-const powerHitDuration = 0.45;
-const powerHitCooldownDuration = 1.15;
-const powerHitBoost = 0.36;
-const directionShiftDuration = 0.45;
-const difficultySettings = {
-  easy: {
-    label: "Facil",
-    aiBaseSpeed: 170,
-    aiScoreBoost: 6,
-    aiHorizontalFactor: 0.6,
-    mistakeRange: 150,
-    mistakeMinTime: 0.45,
-    mistakeRandomTime: 0.65,
-    aiPowerHitChance: 0,
+const GAME_CONFIG = {
+  title: "Padel Arcade",
+  defaultMode: "single",
+  defaultDifficulty: "easy",
+  winningScore: 3,
+  court: {
+    paddleWidth: 14,
+    paddleHeight: 92,
+    paddleMargin: 30,
+    netGap: 42,
   },
-  medium: {
-    label: "Medio",
-    aiBaseSpeed: 205,
-    aiScoreBoost: 8,
-    aiHorizontalFactor: 0.7,
-    mistakeRange: 115,
-    mistakeMinTime: 0.55,
-    mistakeRandomTime: 0.7,
-    aiPowerHitChance: 0.35,
+  ball: {
+    size: 14,
+    baseVelocityX: 330,
+    minVelocityY: 90,
+    randomVelocityY: 180,
+    maxSpeed: 760,
+    speedBoostStep: 0.08,
+    maxSpeedBoost: 1.55,
   },
-  advanced: {
-    label: "Avanzado",
-    aiBaseSpeed: 230,
-    aiScoreBoost: 10,
-    aiHorizontalFactor: 0.8,
-    mistakeRange: 92,
-    mistakeMinTime: 0.65,
-    mistakeRandomTime: 0.75,
-    aiPowerHitChance: 0.65,
+  paddles: {
+    speed: 420,
+    leftColor: "#8dffb0",
+    rightColor: "#50d8ff",
+  },
+  powerHit: {
+    maxPowerBoost: 0.42,
+    duration: 0.45,
+    cooldownDuration: 1.15,
+    boost: 0.36,
+  },
+  directionShift: {
+    duration: 0.45,
+    initialSpawnTime: 2.5,
+    size: 28,
+    minRespawnTime: 7,
+    randomRespawnTime: 4,
+    spawnRangeX: 180,
+    spawnRangeY: 220,
+    color: "#b96cff",
+  },
+  difficulties: {
+    easy: {
+      label: "Facil",
+      aiBaseSpeed: 170,
+      aiScoreBoost: 6,
+      aiHorizontalFactor: 0.6,
+      mistakeRange: 150,
+      mistakeMinTime: 0.45,
+      mistakeRandomTime: 0.65,
+      aiPowerHitChance: 0,
+    },
+    medium: {
+      label: "Medio",
+      aiBaseSpeed: 205,
+      aiScoreBoost: 8,
+      aiHorizontalFactor: 0.7,
+      mistakeRange: 115,
+      mistakeMinTime: 0.55,
+      mistakeRandomTime: 0.7,
+      aiPowerHitChance: 0.35,
+    },
+    advanced: {
+      label: "Avanzado",
+      aiBaseSpeed: 230,
+      aiScoreBoost: 10,
+      aiHorizontalFactor: 0.8,
+      mistakeRange: 92,
+      mistakeMinTime: 0.65,
+      mistakeRandomTime: 0.75,
+      aiPowerHitChance: 0.65,
+    },
+  },
+  modes: {
+    single: {
+      label: "1 jugador",
+      instructions: "1 jugador: flechas o dedo para mover, Shift o boton para pegar con fuerza. Dificultad {difficulty}.",
+      startMessage: "1 jugador: flechas y Shift contra la maquina.",
+    },
+    two: {
+      label: "2 jugadores",
+      instructions: "2 jugadores: izquierda W/A/S/D + Q para pegar fuerte, derecha flechas + Shift para pegar fuerte.",
+      startMessage: "2 jugadores: W/A/S/D + Q y Flechas + Shift.",
+    },
+  },
+  colors: {
+    courtBackground: "#02040a",
+    sideZone: "rgba(80, 216, 255, 0.12)",
+    courtLine: "rgba(47, 156, 255, 0.5)",
+    netLine: "rgba(247, 247, 251, 0.5)",
+    paddleStroke: "#f7f7fb",
+    paddleCutout: "#02040a",
+    powerGlow: "#ffd447",
+    ball: "#ffd447",
+    userPoint: "#8dffb0",
+    rivalPoint: "#ff4b67",
+    overlay: "rgba(0, 0, 0, 0.62)",
+    overlayTitle: "#ffd447",
+    overlayText: "#f7f7fb",
+  },
+  messages: {
+    paused: "Pausa. Espacio para continuar.",
+    playing: "Partida en curso.",
+    powerHit: "Golpe fuerte!",
+    leftWins: "Gana jugador 1. Enter para reiniciar.",
+    rightWins: "Gana jugador 2. Enter para reiniciar.",
+    point: "Punto. Sigue jugando.",
+    directionShift: "Cambio de direccion!",
+    leftWallReturn: "Devolucion con pared izquierda.",
+    rightWallReturn: "Devolucion con pared derecha.",
+    leftWall: "Pared izquierda. La pelota vuelve a la otra cancha.",
+    rightWall: "Pared derecha. La pelota vuelve a la otra cancha.",
+    leftNetMiss: "Cruzo la red sin respuesta del lado izquierdo.",
+    rightNetMiss: "Cruzo la red sin respuesta del lado derecho.",
+    pointUser: "PUNTO!",
+    pointRival: "PUNTO RIVAL",
+    pointPlayerOne: "PUNTO J1",
+    pointPlayerTwo: "PUNTO J2",
+    overlayPaused: "PAUSA",
+    overlayGameOver: "GAME OVER",
+    overlayPauseHint: "Espacio para continuar",
+    overlayWin: "¡Has ganado!",
+    overlayLose: "Suerte para la proxima",
+    overlayRestartHint: "Enter para reiniciar",
   },
 };
 
-let mode = "single";
-let difficulty = "easy";
+const keys = new Set();
+const paddleWidth = GAME_CONFIG.court.paddleWidth;
+const paddleHeight = GAME_CONFIG.court.paddleHeight;
+const paddleMargin = GAME_CONFIG.court.paddleMargin;
+const ballSize = GAME_CONFIG.ball.size;
+const winningScore = GAME_CONFIG.winningScore;
+const netGap = GAME_CONFIG.court.netGap;
+const maxPowerBoost = GAME_CONFIG.powerHit.maxPowerBoost;
+const maxBallSpeed = GAME_CONFIG.ball.maxSpeed;
+const powerHitDuration = GAME_CONFIG.powerHit.duration;
+const powerHitCooldownDuration = GAME_CONFIG.powerHit.cooldownDuration;
+const powerHitBoost = GAME_CONFIG.powerHit.boost;
+const directionShiftDuration = GAME_CONFIG.directionShift.duration;
+const difficultySettings = GAME_CONFIG.difficulties;
+
+let mode = GAME_CONFIG.defaultMode;
+let difficulty = GAME_CONFIG.defaultDifficulty;
 let gameState = "playing";
 let lastTime = 0;
 let leftScore = 0;
@@ -70,9 +167,34 @@ let aiPowerHitDecisionTimer = 0;
 let pointEffect = null;
 let matchWinner = null;
 let directionShiftTimer = 0;
-let powerUpSpawnTimer = 2.5;
+let powerUpSpawnTimer = GAME_CONFIG.directionShift.initialSpawnTime;
 let dashEffects = [];
 let touchControl = null;
+
+function applyGameConfig() {
+  document.title = `${GAME_CONFIG.title} | IXMAIA Arcade`;
+  titleElement.textContent = GAME_CONFIG.title;
+
+  difficultyButtons.forEach((button) => {
+    const settings = difficultySettings[button.dataset.difficulty];
+
+    if (!settings) {
+      return;
+    }
+
+    button.textContent = settings.label;
+  });
+
+  modeButtons.forEach((button) => {
+    const settings = GAME_CONFIG.modes[button.dataset.mode];
+
+    if (!settings) {
+      return;
+    }
+
+    button.textContent = settings.label;
+  });
+}
 
 const dashCooldowns = {
   left: 0,
@@ -86,15 +208,15 @@ const dashRequests = {
 
 const directionPowerUp = {
   active: false,
-  x: canvas.width / 2 - 14,
-  y: canvas.height / 2 - 14,
-  size: 28,
+  x: canvas.width / 2 - GAME_CONFIG.directionShift.size / 2,
+  y: canvas.height / 2 - GAME_CONFIG.directionShift.size / 2,
+  size: GAME_CONFIG.directionShift.size,
 };
 
 const leftPaddle = {
   x: paddleMargin,
   y: canvas.height / 2 - paddleHeight / 2,
-  speed: 420,
+  speed: GAME_CONFIG.paddles.speed,
   vx: 0,
   vy: 0,
   powerHitTimer: 0,
@@ -103,7 +225,7 @@ const leftPaddle = {
 const rightPaddle = {
   x: canvas.width - paddleMargin - paddleWidth,
   y: canvas.height / 2 - paddleHeight / 2,
-  speed: 420,
+  speed: GAME_CONFIG.paddles.speed,
   vx: 0,
   vy: 0,
   powerHitTimer: 0,
@@ -112,8 +234,8 @@ const rightPaddle = {
 const ball = {
   x: canvas.width / 2 - ballSize / 2,
   y: canvas.height / 2 - ballSize / 2,
-  vx: 330,
-  vy: 190,
+  vx: GAME_CONFIG.ball.baseVelocityX,
+  vy: GAME_CONFIG.ball.minVelocityY + 100,
   speedBoost: 1,
 };
 
@@ -127,8 +249,8 @@ function updateHud(message) {
   statusElement.textContent = message;
   instructionsElement.textContent =
     mode === "single"
-      ? `1 jugador: flechas o dedo para mover, Shift o boton para pegar con fuerza. Dificultad ${difficultySettings[difficulty].label}.`
-      : "2 jugadores: izquierda W/A/S/D + Q para pegar fuerte, derecha flechas + Shift para pegar fuerte.";
+      ? GAME_CONFIG.modes.single.instructions.replace("{difficulty}", difficultySettings[difficulty].label)
+      : GAME_CONFIG.modes.two.instructions;
   pauseButton.textContent = gameState === "paused" ? "Continuar" : "Pausar";
 }
 
@@ -146,8 +268,10 @@ function resetBall(direction = Math.random() > 0.5 ? 1 : -1) {
   ball.speedBoost = 1;
   lastBackWallHit = null;
   assistedWallReturn = null;
-  ball.vx = 330 * direction;
-  ball.vy = (Math.random() * 180 + 90) * (Math.random() > 0.5 ? 1 : -1);
+  ball.vx = GAME_CONFIG.ball.baseVelocityX * direction;
+  ball.vy =
+    (Math.random() * GAME_CONFIG.ball.randomVelocityY + GAME_CONFIG.ball.minVelocityY) *
+    (Math.random() > 0.5 ? 1 : -1);
 }
 
 function resetRound() {
@@ -177,7 +301,7 @@ function newGame() {
   rightScore = 0;
   matchWinner = null;
   directionShiftTimer = 0;
-  powerUpSpawnTimer = 2.5;
+  powerUpSpawnTimer = GAME_CONFIG.directionShift.initialSpawnTime;
   directionPowerUp.active = false;
   dashCooldowns.left = 0;
   dashCooldowns.right = 0;
@@ -187,7 +311,7 @@ function newGame() {
   aiPowerHitDecisionTimer = 0;
   gameState = "playing";
   resetRound();
-  updateHud(mode === "single" ? "1 jugador: flechas y Shift contra la maquina." : "2 jugadores: W/A/S/D + Q y Flechas + Shift.");
+  updateHud(GAME_CONFIG.modes[mode].startMessage);
 }
 
 function setMode(nextMode) {
@@ -223,7 +347,7 @@ function togglePause() {
   }
 
   gameState = gameState === "playing" ? "paused" : "playing";
-  updateHud(gameState === "paused" ? "Pausa. Espacio para continuar." : "Partida en curso.");
+  updateHud(gameState === "paused" ? GAME_CONFIG.messages.paused : GAME_CONFIG.messages.playing);
 }
 
 function movePaddles(deltaTime) {
@@ -431,14 +555,14 @@ function bounceFromPaddle(paddle, direction, usePower = true) {
   if (usePower && paddle.powerHitTimer > 0) {
     powerBoost += powerHitBoost;
     paddle.powerHitTimer = 0;
-    updateHud("Golpe fuerte!");
+    updateHud(GAME_CONFIG.messages.powerHit);
   }
 
-  const outgoingSpeed = 330 * (ball.speedBoost + powerBoost);
+  const outgoingSpeed = GAME_CONFIG.ball.baseVelocityX * (ball.speedBoost + powerBoost);
 
-  ball.speedBoost = Math.min(ball.speedBoost + 0.08, 1.55);
+  ball.speedBoost = Math.min(ball.speedBoost + GAME_CONFIG.ball.speedBoostStep, GAME_CONFIG.ball.maxSpeedBoost);
   ball.vx = outgoingSpeed * direction;
-  ball.vy = 330 * hitOffset + paddle.vy * 0.18;
+  ball.vy = GAME_CONFIG.ball.baseVelocityX * hitOffset + paddle.vy * 0.18;
   limitBallSpeed();
   ball.x = direction > 0 ? paddle.x + paddleWidth : paddle.x - ballSize;
   lastBackWallHit = null;
@@ -459,21 +583,28 @@ function scorePoint(side) {
   if (leftScore >= winningScore || rightScore >= winningScore) {
     gameState = "gameOver";
     matchWinner = leftScore > rightScore ? "left" : "right";
-    updateHud(matchWinner === "left" ? "Gana jugador 1. Enter para reiniciar." : "Gana jugador 2. Enter para reiniciar.");
+    updateHud(matchWinner === "left" ? GAME_CONFIG.messages.leftWins : GAME_CONFIG.messages.rightWins);
     return;
   }
 
-  updateHud("Punto. Sigue jugando.");
+  updateHud(GAME_CONFIG.messages.point);
 }
 
 function spawnPointEffect(side) {
   const userWonPoint = mode === "single" ? side === "right" : side === "left";
-  const label = mode === "single" ? (userWonPoint ? "PUNTO!" : "PUNTO RIVAL") : side === "left" ? "PUNTO J1" : "PUNTO J2";
+  const label =
+    mode === "single"
+      ? userWonPoint
+        ? GAME_CONFIG.messages.pointUser
+        : GAME_CONFIG.messages.pointRival
+      : side === "left"
+        ? GAME_CONFIG.messages.pointPlayerOne
+        : GAME_CONFIG.messages.pointPlayerTwo;
 
   pointEffect = {
     age: 0,
     duration: 0.9,
-    color: userWonPoint ? "#8dffb0" : "#ff4b67",
+    color: userWonPoint ? GAME_CONFIG.colors.userPoint : GAME_CONFIG.colors.rivalPoint,
     label,
   };
 }
@@ -491,8 +622,10 @@ function updatePointEffect(deltaTime) {
 }
 
 function spawnDirectionPowerUp() {
-  directionPowerUp.x = canvas.width / 2 - directionPowerUp.size / 2 + (Math.random() - 0.5) * 180;
-  directionPowerUp.y = canvas.height / 2 - directionPowerUp.size / 2 + (Math.random() - 0.5) * 220;
+  directionPowerUp.x =
+    canvas.width / 2 - directionPowerUp.size / 2 + (Math.random() - 0.5) * GAME_CONFIG.directionShift.spawnRangeX;
+  directionPowerUp.y =
+    canvas.height / 2 - directionPowerUp.size / 2 + (Math.random() - 0.5) * GAME_CONFIG.directionShift.spawnRangeY;
   directionPowerUp.active = true;
 }
 
@@ -514,11 +647,11 @@ function activateDirectionShift() {
 
   directionShiftTimer = directionShiftDuration;
   directionPowerUp.active = false;
-  powerUpSpawnTimer = 7 + Math.random() * 4;
+  powerUpSpawnTimer = GAME_CONFIG.directionShift.minRespawnTime + Math.random() * GAME_CONFIG.directionShift.randomRespawnTime;
   ball.vx = Math.cos(angle) * speed * horizontalDirection;
   ball.vy = Math.sin(angle) * speed * verticalDirection;
   limitBallSpeed();
-  updateHud("Cambio de direccion!");
+  updateHud(GAME_CONFIG.messages.directionShift);
 }
 
 function updatePowerUps(deltaTime) {
@@ -578,7 +711,7 @@ function updateBall(deltaTime) {
       ball.x = 0;
       ball.vx = Math.abs(ball.vx);
       assistedWallReturn = null;
-      updateHud("Devolucion con pared izquierda.");
+      updateHud(GAME_CONFIG.messages.leftWallReturn);
       return;
     }
 
@@ -590,7 +723,7 @@ function updateBall(deltaTime) {
     ball.x = 0;
     ball.vx = Math.abs(ball.vx);
     lastBackWallHit = "left";
-    updateHud("Pared izquierda. La pelota vuelve a la otra cancha.");
+    updateHud(GAME_CONFIG.messages.leftWall);
   }
 
   if (ball.x + ballSize >= canvas.width) {
@@ -598,7 +731,7 @@ function updateBall(deltaTime) {
       ball.x = canvas.width - ballSize;
       ball.vx = -Math.abs(ball.vx);
       assistedWallReturn = null;
-      updateHud("Devolucion con pared derecha.");
+      updateHud(GAME_CONFIG.messages.rightWallReturn);
       return;
     }
 
@@ -610,17 +743,17 @@ function updateBall(deltaTime) {
     ball.x = canvas.width - ballSize;
     ball.vx = -Math.abs(ball.vx);
     lastBackWallHit = "right";
-    updateHud("Pared derecha. La pelota vuelve a la otra cancha.");
+    updateHud(GAME_CONFIG.messages.rightWall);
   }
 
   // After a back-wall bounce, the ball may cross the net only if the player answered with the paddle.
   if (lastBackWallHit === "left" && ball.vx > 0 && ball.x > canvas.width / 2) {
-    updateHud("Cruzo la red sin respuesta del lado izquierdo.");
+    updateHud(GAME_CONFIG.messages.leftNetMiss);
     scorePoint("right");
   }
 
   if (lastBackWallHit === "right" && ball.vx < 0 && ball.x + ballSize < canvas.width / 2) {
-    updateHud("Cruzo la red sin respuesta del lado derecho.");
+    updateHud(GAME_CONFIG.messages.rightNetMiss);
     scorePoint("left");
   }
 }
@@ -639,14 +772,16 @@ function update(deltaTime) {
 }
 
 function drawCourt() {
-  context.fillStyle = "#02040a";
+  const colors = GAME_CONFIG.colors;
+
+  context.fillStyle = colors.courtBackground;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  context.fillStyle = "rgba(80, 216, 255, 0.12)";
+  context.fillStyle = colors.sideZone;
   context.fillRect(12, 12, 28, canvas.height - 24);
   context.fillRect(canvas.width - 40, 12, 28, canvas.height - 24);
 
-  context.strokeStyle = "rgba(47, 156, 255, 0.5)";
+  context.strokeStyle = colors.courtLine;
   context.lineWidth = 4;
   context.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
 
@@ -654,7 +789,7 @@ function drawCourt() {
   context.beginPath();
   context.moveTo(canvas.width / 2, 22);
   context.lineTo(canvas.width / 2, canvas.height - 22);
-  context.strokeStyle = "rgba(247, 247, 251, 0.5)";
+  context.strokeStyle = colors.netLine;
   context.stroke();
   context.setLineDash([]);
 }
@@ -671,12 +806,12 @@ function drawPaddle(paddle, color) {
 
   context.save();
   if (paddle.powerHitTimer > 0) {
-    context.shadowColor = "#ffd447";
+    context.shadowColor = GAME_CONFIG.colors.powerGlow;
     context.shadowBlur = 18;
   }
 
   context.fillStyle = color;
-  context.strokeStyle = "#f7f7fb";
+  context.strokeStyle = GAME_CONFIG.colors.paddleStroke;
   context.lineWidth = 2;
 
   context.beginPath();
@@ -684,7 +819,7 @@ function drawPaddle(paddle, color) {
   context.fill();
   context.stroke();
 
-  context.fillStyle = "#02040a";
+  context.fillStyle = GAME_CONFIG.colors.paddleCutout;
   for (let row = 0; row < 3; row += 1) {
     for (let col = 0; col < 2; col += 1) {
       context.beginPath();
@@ -693,7 +828,7 @@ function drawPaddle(paddle, color) {
     }
   }
 
-  context.fillStyle = "#f7f7fb";
+  context.fillStyle = GAME_CONFIG.colors.paddleStroke;
   context.fillRect(centerX - 4, handleY, 8, 28);
   context.fillStyle = color;
   context.fillRect(centerX - 7, handleY + 20, 14, 12);
@@ -711,7 +846,7 @@ function drawDashEffects() {
 
     context.save();
     context.globalAlpha = alpha * 0.75;
-    context.strokeStyle = effect.side === "left" ? "#8dffb0" : "#50d8ff";
+    context.strokeStyle = effect.side === "left" ? GAME_CONFIG.paddles.leftColor : GAME_CONFIG.paddles.rightColor;
     context.lineWidth = 3;
     context.beginPath();
     context.ellipse(centerX, centerY, 30 + progress * 28, 54 + progress * 28, 0, 0, Math.PI * 2);
@@ -721,7 +856,7 @@ function drawDashEffects() {
 }
 
 function drawBall() {
-  context.fillStyle = directionShiftTimer > 0 ? "#b96cff" : "#ffd447";
+  context.fillStyle = directionShiftTimer > 0 ? GAME_CONFIG.directionShift.color : GAME_CONFIG.colors.ball;
   context.fillRect(ball.x, ball.y, ballSize, ballSize);
 }
 
@@ -736,7 +871,7 @@ function drawDirectionShiftTrail() {
 
   context.save();
   context.globalAlpha = 0.55;
-  context.fillStyle = "#b96cff";
+  context.fillStyle = GAME_CONFIG.directionShift.color;
 
   for (let index = 1; index <= 4; index += 1) {
     const fade = 1 - index * 0.18;
@@ -761,15 +896,15 @@ function drawDirectionPowerUp() {
   const centerY = directionPowerUp.y + directionPowerUp.size / 2;
 
   context.save();
-  context.shadowColor = "#b96cff";
+  context.shadowColor = GAME_CONFIG.directionShift.color;
   context.shadowBlur = 14;
-  context.fillStyle = "#b96cff";
+  context.fillStyle = GAME_CONFIG.directionShift.color;
   context.beginPath();
   context.arc(centerX, centerY, directionPowerUp.size / 2, 0, Math.PI * 2);
   context.fill();
 
   context.shadowBlur = 0;
-  context.fillStyle = "#02040a";
+  context.fillStyle = GAME_CONFIG.colors.paddleCutout;
   context.beginPath();
   for (let point = 0; point < 10; point += 1) {
     const radius = point % 2 === 0 ? 10 : 4;
@@ -818,21 +953,26 @@ function drawOverlay() {
     return;
   }
 
-  context.fillStyle = "rgba(0, 0, 0, 0.62)";
+  context.fillStyle = GAME_CONFIG.colors.overlay;
   context.fillRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "#ffd447";
+  context.fillStyle = GAME_CONFIG.colors.overlayTitle;
   context.textAlign = "center";
   context.font = "bold 42px Arial";
 
   const userWonMatch = mode === "single" ? matchWinner === "right" : matchWinner === "left";
-  const title = gameState === "paused" ? "PAUSA" : "GAME OVER";
-  const resultColor = userWonMatch ? "#8dffb0" : "#ff4b67";
-  const message = gameState === "paused" ? "Espacio para continuar" : userWonMatch ? "¡Has ganado!" : "Suerte para la proxima";
+  const title = gameState === "paused" ? GAME_CONFIG.messages.overlayPaused : GAME_CONFIG.messages.overlayGameOver;
+  const resultColor = userWonMatch ? GAME_CONFIG.colors.userPoint : GAME_CONFIG.colors.rivalPoint;
+  const message =
+    gameState === "paused"
+      ? GAME_CONFIG.messages.overlayPauseHint
+      : userWonMatch
+        ? GAME_CONFIG.messages.overlayWin
+        : GAME_CONFIG.messages.overlayLose;
 
   context.fillText(title, canvas.width / 2, canvas.height / 2 - 34);
 
   if (gameState === "paused") {
-    context.fillStyle = "#f7f7fb";
+    context.fillStyle = GAME_CONFIG.colors.overlayText;
     context.font = "20px Arial";
     context.fillText(message, canvas.width / 2, canvas.height / 2 + 8);
     return;
@@ -842,16 +982,16 @@ function drawOverlay() {
   context.font = "bold 34px Arial";
   context.fillText(message, canvas.width / 2, canvas.height / 2 + 12);
 
-  context.fillStyle = "#f7f7fb";
+  context.fillStyle = GAME_CONFIG.colors.overlayText;
   context.font = "18px Arial";
-  context.fillText("Enter para reiniciar", canvas.width / 2, canvas.height / 2 + 48);
+  context.fillText(GAME_CONFIG.messages.overlayRestartHint, canvas.width / 2, canvas.height / 2 + 48);
 }
 
 function draw() {
   drawCourt();
   drawDashEffects();
-  drawPaddle(leftPaddle, "#8dffb0");
-  drawPaddle(rightPaddle, "#50d8ff");
+  drawPaddle(leftPaddle, GAME_CONFIG.paddles.leftColor);
+  drawPaddle(rightPaddle, GAME_CONFIG.paddles.rightColor);
   drawDirectionPowerUp();
   drawDirectionShiftTrail();
   drawBall();
@@ -954,6 +1094,7 @@ difficultyButtons.forEach((button) => {
   });
 });
 
+applyGameConfig();
 updateModeButtons();
 updateDifficultyButtons();
 newGame();
