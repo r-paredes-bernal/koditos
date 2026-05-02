@@ -75,30 +75,22 @@ body {
 }
 
 .controls button:hover,
-.difficulty-item:hover {
+.sound-button:hover {
   border-color: #ffd447;
 }
 
 .controls button:active,
-.difficulty-item:active {
+.sound-button:active {
   transform: translateY(1px);
 }
 
 .play-area {
-  display: grid;
-  grid-template-columns: minmax(0, 520px) 180px;
-  align-items: start;
-  justify-content: center;
-  gap: 18px;
+  max-width: 520px;
+  margin: 0 auto;
 }
 
 .board-column {
   width: 100%;
-}
-
-.side-column {
-  display: grid;
-  gap: 12px;
 }
 
 canvas {
@@ -112,65 +104,8 @@ canvas {
   user-select: none;
 }
 
-.difficulty-panel {
-  border: 2px solid #1f9f67;
-  border-radius: 8px;
-  background: #08110f;
-  padding: 14px;
-}
-
-.difficulty-panel h2 {
-  margin: 0 0 12px;
-  color: #8dffb0;
-  font-size: 18px;
-  text-align: center;
-}
-
-.difficulty-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.difficulty-item {
-  width: 100%;
-  min-height: 54px;
-  display: grid;
-  align-content: center;
-  gap: 3px;
-  border: 1px solid #244f3d;
-  border-radius: 6px;
-  padding: 9px 10px;
-  background: #0d1815;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-
-.difficulty-item--active {
-  border-color: #ffd447;
-  background: #1b1a0f;
-}
-
-.difficulty-name {
-  color: #f7f7fb;
-  font-weight: 700;
-}
-
-.difficulty-label {
-  color: #9aa6bd;
-  font-size: 13px;
-}
-
-.difficulty-item--active .difficulty-label {
-  color: #ffd447;
-}
-
 .sound-button {
-  width: 100%;
+  min-width: 48px;
   min-height: 42px;
   border: 2px solid #54ff9f;
   border-radius: 6px;
@@ -179,14 +114,6 @@ canvas {
   cursor: pointer;
   font: inherit;
   font-size: 22px;
-}
-
-.sound-button:hover {
-  border-color: #ffd447;
-}
-
-.sound-button:active {
-  transform: translateY(1px);
 }
 
 .status {
@@ -247,18 +174,6 @@ canvas {
     width: min(520px, calc(100% - 24px));
   }
 
-  .play-area {
-    grid-template-columns: 1fr;
-  }
-
-  .difficulty-panel {
-    width: auto;
-  }
-
-  .difficulty-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .touch-pad {
     display: grid;
   }
@@ -278,9 +193,5 @@ canvas {
 
   .stats {
     top: 0;
-  }
-
-  .difficulty-list {
-    grid-template-columns: 1fr;
   }
 }

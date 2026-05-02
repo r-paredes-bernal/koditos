@@ -6,14 +6,14 @@ const livesElement = document.querySelector("#lives");
 const statusElement = document.querySelector("#status");
 const pauseButton = document.querySelector("#pause-button");
 const muteButton = document.querySelector("#mute-button");
-const difficultyButtons = document.querySelectorAll(".difficulty-item[data-level]");
 const touchButtons = document.querySelectorAll(".touch-control[data-direction]");
 
 // === ASSISTANT_EDITABLE_CONFIG_START ===
 const GAME_CONFIG = {
   title: "Robo Chip",
   tileSize: 32,
-  defaultLevel: 1,
+  droneSpeed: 104,
+  droneCount: 3,
   player: {
     start: { x: 1, y: 1 },
     lives: 3,
@@ -25,32 +25,6 @@ const GAME_CONFIG = {
     { x: 1, y: 13, color: "#ff9f43", scatter: { x: 12, y: 13 } },
     { x: 1, y: 3, color: "#c77dff", scatter: { x: 1, y: 1 } },
   ],
-  levels: {
-    1: {
-      name: "Normal",
-      label: "Default",
-      message: "Nivel 1: sistema estable.",
-      playerSpeed: 150,
-      droneSpeed: 104,
-      droneCount: 3,
-    },
-    2: {
-      name: "Media",
-      label: "Mas rapido",
-      message: "Nivel 2: drones y robot mas rapidos.",
-      playerSpeed: 176,
-      droneSpeed: 132,
-      droneCount: 3,
-    },
-    3: {
-      name: "Alta",
-      label: "Nuevo enemigo",
-      message: "Nivel 3: velocidad alta y un dron extra.",
-      playerSpeed: 176,
-      droneSpeed: 132,
-      droneCount: 4,
-    },
-  },
   map: [
     "##############",
     "#o....##....o#",
@@ -129,7 +103,6 @@ const oppositeDirections = new Map([
 
 const startPlayer = GAME_CONFIG.player.start;
 const startGhosts = GAME_CONFIG.drones;
-const difficultySettings = GAME_CONFIG.levels;
 
 let score = 0;
 let lives = GAME_CONFIG.player.lives;
@@ -139,7 +112,6 @@ let frightenedUntil = 0;
 let gameState = "ready";
 let lastTime = 0;
 let animationTick = 0;
-let currentLevel = GAME_CONFIG.defaultLevel;
 let shakeTime = 0;
 let audioContext = null;
 let isMuted = false;
@@ -162,22 +134,9 @@ function applyGameConfig() {
   document.title = `${GAME_CONFIG.title} | IXMAIA Arcade`;
   titleElement.textContent = GAME_CONFIG.title;
   livesElement.textContent = GAME_CONFIG.player.lives;
-
-  difficultyButtons.forEach((button) => {
-    const settings = difficultySettings[button.dataset.level];
-
-    if (!settings) {
-      return;
-    }
-
-    button.querySelector(".difficulty-name").textContent = settings.name;
-    button.querySelector(".difficulty-label").textContent = settings.label;
-  });
 }
 
 function createDrone(ghost) {
-  const settings = difficultySettings[currentLevel];
-
   return {
     col: ghost.x,
     row: ghost.y,
@@ -186,13 +145,12 @@ function createDrone(ghost) {
     direction: { x: 0, y: -1 },
     color: ghost.color,
     scatter: ghost.scatter,
-    speed: settings.droneSpeed,
+    speed: GAME_CONFIG.droneSpeed,
   };
 }
 
 function buildDrones() {
-  const settings = difficultySettings[currentLevel];
-  ghosts = startGhosts.slice(0, settings.droneCount).map(createDrone);
+  ghosts = startGhosts.slice(0, GAME_CONFIG.droneCount).map(createDrone);
 }
 
 function resetPellets() {
@@ -215,15 +173,13 @@ function resetPellets() {
 }
 
 function resetPositions() {
-  const settings = difficultySettings[currentLevel];
-
   player.col = startPlayer.x;
   player.row = startPlayer.y;
   player.x = startPlayer.x * tileSize;
   player.y = startPlayer.y * tileSize;
   player.direction = { x: 0, y: 0 };
   player.nextDirection = { x: 0, y: 0 };
-  player.speed = settings.playerSpeed;
+  player.speed = GAME_CONFIG.player.defaultSpeed;
 
   ghosts.forEach((ghost, index) => {
     ghost.col = startGhosts[index].x;
@@ -231,13 +187,11 @@ function resetPositions() {
     ghost.x = startGhosts[index].x * tileSize;
     ghost.y = startGhosts[index].y * tileSize;
     ghost.direction = { x: 0, y: -1 };
-    ghost.speed = settings.droneSpeed;
+    ghost.speed = GAME_CONFIG.droneSpeed;
   });
 }
 
 function newGame() {
-  const settings = difficultySettings[currentLevel];
-
   score = 0;
   lives = GAME_CONFIG.player.lives;
   frightenedUntil = 0;
@@ -247,7 +201,7 @@ function newGame() {
   resetPellets();
   buildDrones();
   resetPositions();
-  updateHud(`${settings.message} ${GAME_CONFIG.messages.ready}`);
+  updateHud(GAME_CONFIG.messages.ready);
 }
 
 function updateHud(message) {
@@ -399,20 +353,6 @@ function setDirectionFromSwipe(start, end) {
       ? deltaX > 0 ? directions.ArrowRight : directions.ArrowLeft
       : deltaY > 0 ? directions.ArrowDown : directions.ArrowUp
   );
-}
-
-function updateDifficultyButtons() {
-  difficultyButtons.forEach((button) => {
-    const isActive = Number(button.dataset.level) === currentLevel;
-    button.classList.toggle("difficulty-item--active", isActive);
-    button.setAttribute("aria-pressed", String(isActive));
-  });
-}
-
-function setDifficulty(level) {
-  currentLevel = level;
-  updateDifficultyButtons();
-  newGame();
 }
 
 function getCurrentMap() {
@@ -1046,15 +986,7 @@ muteButton.addEventListener("click", () => {
   }
 });
 
-difficultyButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    ensureAudio();
-    setDifficulty(Number(button.dataset.level));
-  });
-});
-
 applyGameConfig();
 updateMuteButton();
-updateDifficultyButtons();
 newGame();
 requestAnimationFrame(gameLoop);
