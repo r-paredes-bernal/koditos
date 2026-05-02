@@ -75,14 +75,12 @@ body {
 }
 
 .controls button:hover,
-.difficulty-item:hover,
-.scenario-item:hover {
+.difficulty-item:hover {
   border-color: #ffd447;
 }
 
 .controls button:active,
-.difficulty-item:active,
-.scenario-item:active {
+.difficulty-item:active {
   transform: translateY(1px);
 }
 
@@ -114,24 +112,21 @@ canvas {
   user-select: none;
 }
 
-.difficulty-panel,
-.scenario-panel {
+.difficulty-panel {
   border: 2px solid #1f9f67;
   border-radius: 8px;
   background: #08110f;
   padding: 14px;
 }
 
-.difficulty-panel h2,
-.scenario-panel h2 {
+.difficulty-panel h2 {
   margin: 0 0 12px;
   color: #8dffb0;
   font-size: 18px;
   text-align: center;
 }
 
-.difficulty-list,
-.scenario-list {
+.difficulty-list {
   display: grid;
   gap: 10px;
   margin: 0;
@@ -139,8 +134,7 @@ canvas {
   list-style: none;
 }
 
-.difficulty-item,
-.scenario-item {
+.difficulty-item {
   width: 100%;
   min-height: 54px;
   display: grid;
@@ -156,26 +150,22 @@ canvas {
   text-align: left;
 }
 
-.difficulty-item--active,
-.scenario-item--active {
+.difficulty-item--active {
   border-color: #ffd447;
   background: #1b1a0f;
 }
 
-.difficulty-name,
-.scenario-name {
+.difficulty-name {
   color: #f7f7fb;
   font-weight: 700;
 }
 
-.difficulty-label,
-.scenario-label {
+.difficulty-label {
   color: #9aa6bd;
   font-size: 13px;
 }
 
-.difficulty-item--active .difficulty-label,
-.scenario-item--active .scenario-label {
+.difficulty-item--active .difficulty-label {
   color: #ffd447;
 }
 
@@ -261,13 +251,11 @@ canvas {
     grid-template-columns: 1fr;
   }
 
-  .difficulty-panel,
-  .scenario-panel {
+  .difficulty-panel {
     width: auto;
   }
 
-  .difficulty-list,
-  .scenario-list {
+  .difficulty-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -292,8 +280,7 @@ canvas {
     top: 0;
   }
 
-  .difficulty-list,
-  .scenario-list {
+  .difficulty-list {
     grid-template-columns: 1fr;
   }
 }

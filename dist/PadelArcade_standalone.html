@@ -272,6 +272,7 @@ canvas {
     </main>
 
     <script>
+(() => {
 const canvas = document.querySelector("#game");
 const context = canvas.getContext("2d");
 const titleElement = document.querySelector(".hud h1");
@@ -1376,6 +1377,7 @@ updateDifficultyButtons();
 newGame();
 requestAnimationFrame(gameLoop);
 
+})();
 </script>
   </body>
 </html>

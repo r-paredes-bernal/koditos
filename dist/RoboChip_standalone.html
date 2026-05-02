@@ -82,14 +82,12 @@ body {
 }
 
 .controls button:hover,
-.difficulty-item:hover,
-.scenario-item:hover {
+.difficulty-item:hover {
   border-color: #ffd447;
 }
 
 .controls button:active,
-.difficulty-item:active,
-.scenario-item:active {
+.difficulty-item:active {
   transform: translateY(1px);
 }
 
@@ -114,31 +112,28 @@ canvas {
   width: 100%;
   aspect-ratio: 448 / 480;
   display: block;
-  border: 3px solid #ff2b5e;
+  border: 3px solid #54ff9f;
   background: #020806;
   image-rendering: pixelated;
   touch-action: none;
   user-select: none;
 }
 
-.difficulty-panel,
-.scenario-panel {
+.difficulty-panel {
   border: 2px solid #1f9f67;
   border-radius: 8px;
   background: #08110f;
   padding: 14px;
 }
 
-.difficulty-panel h2,
-.scenario-panel h2 {
+.difficulty-panel h2 {
   margin: 0 0 12px;
   color: #8dffb0;
   font-size: 18px;
   text-align: center;
 }
 
-.difficulty-list,
-.scenario-list {
+.difficulty-list {
   display: grid;
   gap: 10px;
   margin: 0;
@@ -146,8 +141,7 @@ canvas {
   list-style: none;
 }
 
-.difficulty-item,
-.scenario-item {
+.difficulty-item {
   width: 100%;
   min-height: 54px;
   display: grid;
@@ -163,26 +157,22 @@ canvas {
   text-align: left;
 }
 
-.difficulty-item--active,
-.scenario-item--active {
+.difficulty-item--active {
   border-color: #ffd447;
   background: #1b1a0f;
 }
 
-.difficulty-name,
-.scenario-name {
+.difficulty-name {
   color: #f7f7fb;
   font-weight: 700;
 }
 
-.difficulty-label,
-.scenario-label {
+.difficulty-label {
   color: #9aa6bd;
   font-size: 13px;
 }
 
-.difficulty-item--active .difficulty-label,
-.scenario-item--active .scenario-label {
+.difficulty-item--active .difficulty-label {
   color: #ffd447;
 }
 
@@ -268,13 +258,11 @@ canvas {
     grid-template-columns: 1fr;
   }
 
-  .difficulty-panel,
-  .scenario-panel {
+  .difficulty-panel {
     width: auto;
   }
 
-  .difficulty-list,
-  .scenario-list {
+  .difficulty-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -299,8 +287,7 @@ canvas {
     top: 0;
   }
 
-  .difficulty-list,
-  .scenario-list {
+  .difficulty-list {
     grid-template-columns: 1fr;
   }
 }
@@ -325,7 +312,7 @@ canvas {
           </div>
 
           <canvas id="game" width="448" height="480" aria-label="Juego RoboChip"></canvas>
-          <p class="status" id="status">Flechas, WASD o controles tactiles para moverte. Espacio para pausar.</p>
+          <p class="status" id="status">Flechas o controles tactiles para moverte. Espacio para pausar.</p>
 
           <div class="touch-pad" aria-label="Controles tactiles">
             <button class="touch-control touch-control--up" type="button" data-direction="ArrowUp" aria-label="Mover arriba">▲</button>
@@ -363,30 +350,6 @@ canvas {
               </li>
             </ol>
           </aside>
-
-          <aside class="scenario-panel" aria-labelledby="scenario-title">
-            <h2 id="scenario-title">Escenario</h2>
-            <ol class="scenario-list">
-              <li>
-                <button class="scenario-item scenario-item--active" type="button" data-scenario="motherboard" aria-pressed="true">
-                  <span class="scenario-name">Placa Madre</span>
-                  <span class="scenario-label">Circuito clasico</span>
-                </button>
-              </li>
-              <li>
-                <button class="scenario-item" type="button" data-scenario="pizza" aria-pressed="false">
-                  <span class="scenario-name">Pizza Espacial</span>
-                  <span class="scenario-label">Rebanada arcade</span>
-                </button>
-              </li>
-              <li>
-                <button class="scenario-item" type="button" data-scenario="castle" aria-pressed="false">
-                  <span class="scenario-name">Castillo Digital</span>
-                  <span class="scenario-label">Torres firewall</span>
-                </button>
-              </li>
-            </ol>
-          </aside>
         </div>
       </section>
     </main>
@@ -402,7 +365,6 @@ const statusElement = document.querySelector("#status");
 const pauseButton = document.querySelector("#pause-button");
 const muteButton = document.querySelector("#mute-button");
 const difficultyButtons = document.querySelectorAll(".difficulty-item[data-level]");
-const scenarioButtons = document.querySelectorAll(".scenario-item[data-scenario]");
 const touchButtons = document.querySelectorAll(".touch-control[data-direction]");
 
 // === ASSISTANT_EDITABLE_CONFIG_START ===
@@ -410,7 +372,6 @@ const GAME_CONFIG = {
   title: "Robo Chip",
   tileSize: 32,
   defaultLevel: 1,
-  defaultScenario: "motherboard",
   player: {
     start: { x: 1, y: 1 },
     lives: 3,
@@ -448,81 +409,33 @@ const GAME_CONFIG = {
       droneCount: 4,
     },
   },
-  scenarios: {
-    motherboard: {
-      name: "Placa Madre",
-      label: "Circuito clasico",
-      map: [
-        "##############",
-        "#o....##....o#",
-        "#.##..##..##.#",
-        "#o..........o#",
-        "###.##..##.###",
-        "#...#....#...#",
-        "#.###.##.###.#",
-        "#......#.....#",
-        "#.###.##.###.#",
-        "#...#....#...#",
-        "###.##..##.###",
-        "#............#",
-        "#.##..##..##.#",
-        "#o....##....o#",
-        "##############",
-      ],
-    },
-    pizza: {
-      name: "Pizza Espacial",
-      label: "Rebanada arcade",
-      map: [
-        "##############",
-        "#o..........o#",
-        "#.##.####.##.#",
-        "#o....##.....#",
-        "###.#....#.###",
-        "xx#........#xx",
-        "xx##.####.##xx",
-        "xxx#......#xxx",
-        "xx##.####.##xx",
-        "xx#........#xx",
-        "###.#.##.#.###",
-        "#............#",
-        "#.##.####.##.#",
-        "#o..........o#",
-        "##############",
-      ],
-    },
-    castle: {
-      name: "Castillo Digital",
-      label: "Torres firewall",
-      map: [
-        "##.########.##",
-        "#o..........o#",
-        "#.###.##.###.#",
-        "#o..........o#",
-        "###.##..##.###",
-        "#...#....#...#",
-        "#.#.######.#.#",
-        "#.#........#.#",
-        "#.#.######.#.#",
-        "#...#....#...#",
-        "###.##..##.###",
-        "#............#",
-        "#.###.##.###.#",
-        "#o..........o#",
-        "##.########.##",
-      ],
-    },
-  },
+  map: [
+    "##############",
+    "#o....##....o#",
+    "#.##..##..##.#",
+    "#o..........o#",
+    "###.##..##.###",
+    "#...#....#...#",
+    "#.###.##.###.#",
+    "#......#.....#",
+    "#.###.##.###.#",
+    "#...#....#...#",
+    "###.##..##.###",
+    "#............#",
+    "#.##..##..##.#",
+    "#o....##....o#",
+    "##############",
+  ],
   colors: {
-    boardBackground: "#120206",
-    grid: "rgba(255, 43, 94, 0.15)",
-    pathStroke: "rgba(255, 90, 120, 0.3)",
-    pathNode: "rgba(255, 153, 170, 0.2)",
-    wallFill: "#2b0208",
-    wallStroke: "#ff2b5e",
-    wallDetail: "rgba(255, 220, 228, 0.28)",
-    pellet: "#ff9fb3",
-    powerPellet: "#ff2b5e",
+    boardBackground: "#020806",
+    grid: "rgba(84, 255, 159, 0.12)",
+    pathStroke: "rgba(84, 255, 159, 0.26)",
+    pathNode: "rgba(141, 255, 176, 0.18)",
+    wallFill: "#10261d",
+    wallStroke: "#54ff9f",
+    wallDetail: "rgba(220, 231, 255, 0.28)",
+    pellet: "#ffe7a3",
+    powerPellet: "#50d8ff",
     playerAntenna: "#9bd8ff",
     playerSignal: "#ffd447",
     playerHead: "#8bd3ff",
@@ -540,7 +453,7 @@ const GAME_CONFIG = {
     overlayText: "#f7f7fb",
   },
   messages: {
-    ready: "Flechas, WASD o dedo para moverte.",
+    ready: "Flechas o dedo para moverte.",
     paused: "Pausa. Espacio o boton para continuar.",
     powerActive: "Poder activo: puedes destruir drones.",
     droneDestroyed: "Drone destruido. Sigue asi.",
@@ -563,10 +476,6 @@ const directions = {
   ArrowDown: { x: 0, y: 1 },
   ArrowLeft: { x: -1, y: 0 },
   ArrowRight: { x: 1, y: 0 },
-  a: { x: -1, y: 0 },
-  d: { x: 1, y: 0 },
-  s: { x: 0, y: 1 },
-  w: { x: 0, y: -1 },
 };
 
 const oppositeDirections = new Map([
@@ -589,7 +498,6 @@ let gameState = "ready";
 let lastTime = 0;
 let animationTick = 0;
 let currentLevel = GAME_CONFIG.defaultLevel;
-let currentScenario = GAME_CONFIG.defaultScenario;
 let shakeTime = 0;
 let audioContext = null;
 let isMuted = false;
@@ -622,17 +530,6 @@ function applyGameConfig() {
 
     button.querySelector(".difficulty-name").textContent = settings.name;
     button.querySelector(".difficulty-label").textContent = settings.label;
-  });
-
-  scenarioButtons.forEach((button) => {
-    const scenario = GAME_CONFIG.scenarios[button.dataset.scenario];
-
-    if (!scenario) {
-      return;
-    }
-
-    button.querySelector(".scenario-name").textContent = scenario.name;
-    button.querySelector(".scenario-label").textContent = scenario.label;
   });
 }
 
@@ -877,21 +774,7 @@ function setDifficulty(level) {
 }
 
 function getCurrentMap() {
-  return GAME_CONFIG.scenarios[currentScenario].map;
-}
-
-function updateScenarioButtons() {
-  scenarioButtons.forEach((button) => {
-    const isActive = button.dataset.scenario === currentScenario;
-    button.classList.toggle("scenario-item--active", isActive);
-    button.setAttribute("aria-pressed", String(isActive));
-  });
-}
-
-function setScenario(scenario) {
-  currentScenario = scenario;
-  updateScenarioButtons();
-  newGame();
+  return GAME_CONFIG.map;
 }
 
 function tileKey(col, row) {
@@ -1411,10 +1294,25 @@ function gameLoop(currentTime) {
   requestAnimationFrame(gameLoop);
 }
 
+function isTypingInEditableField(event) {
+  const target = event.target;
+
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target?.isContentEditable
+  );
+}
+
 window.addEventListener("keydown", (event) => {
+  if (isTypingInEditableField(event)) {
+    return;
+  }
+
   ensureAudio();
 
-  const requestedDirection = directions[event.key] ?? directions[event.key.toLowerCase()];
+  const requestedDirection = directions[event.key];
 
   if (requestedDirection) {
     event.preventDefault();
@@ -1513,17 +1411,9 @@ difficultyButtons.forEach((button) => {
   });
 });
 
-scenarioButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    ensureAudio();
-    setScenario(button.dataset.scenario);
-  });
-});
-
 applyGameConfig();
 updateMuteButton();
 updateDifficultyButtons();
-updateScenarioButtons();
 newGame();
 requestAnimationFrame(gameLoop);
 

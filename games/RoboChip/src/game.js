@@ -7,7 +7,6 @@ const statusElement = document.querySelector("#status");
 const pauseButton = document.querySelector("#pause-button");
 const muteButton = document.querySelector("#mute-button");
 const difficultyButtons = document.querySelectorAll(".difficulty-item[data-level]");
-const scenarioButtons = document.querySelectorAll(".scenario-item[data-scenario]");
 const touchButtons = document.querySelectorAll(".touch-control[data-direction]");
 
 // === ASSISTANT_EDITABLE_CONFIG_START ===
@@ -15,7 +14,6 @@ const GAME_CONFIG = {
   title: "Robo Chip",
   tileSize: 32,
   defaultLevel: 1,
-  defaultScenario: "motherboard",
   player: {
     start: { x: 1, y: 1 },
     lives: 3,
@@ -53,71 +51,23 @@ const GAME_CONFIG = {
       droneCount: 4,
     },
   },
-  scenarios: {
-    motherboard: {
-      name: "Placa Madre",
-      label: "Circuito clasico",
-      map: [
-        "##############",
-        "#o....##....o#",
-        "#.##..##..##.#",
-        "#o..........o#",
-        "###.##..##.###",
-        "#...#....#...#",
-        "#.###.##.###.#",
-        "#......#.....#",
-        "#.###.##.###.#",
-        "#...#....#...#",
-        "###.##..##.###",
-        "#............#",
-        "#.##..##..##.#",
-        "#o....##....o#",
-        "##############",
-      ],
-    },
-    pizza: {
-      name: "Pizza Espacial",
-      label: "Rebanada arcade",
-      map: [
-        "##############",
-        "#o..........o#",
-        "#.##.####.##.#",
-        "#o....##.....#",
-        "###.#....#.###",
-        "xx#........#xx",
-        "xx##.####.##xx",
-        "xxx#......#xxx",
-        "xx##.####.##xx",
-        "xx#........#xx",
-        "###.#.##.#.###",
-        "#............#",
-        "#.##.####.##.#",
-        "#o..........o#",
-        "##############",
-      ],
-    },
-    castle: {
-      name: "Castillo Digital",
-      label: "Torres firewall",
-      map: [
-        "##.########.##",
-        "#o..........o#",
-        "#.###.##.###.#",
-        "#o..........o#",
-        "###.##..##.###",
-        "#...#....#...#",
-        "#.#.######.#.#",
-        "#.#........#.#",
-        "#.#.######.#.#",
-        "#...#....#...#",
-        "###.##..##.###",
-        "#............#",
-        "#.###.##.###.#",
-        "#o..........o#",
-        "##.########.##",
-      ],
-    },
-  },
+  map: [
+    "##############",
+    "#o....##....o#",
+    "#.##..##..##.#",
+    "#o..........o#",
+    "###.##..##.###",
+    "#...#....#...#",
+    "#.###.##.###.#",
+    "#......#.....#",
+    "#.###.##.###.#",
+    "#...#....#...#",
+    "###.##..##.###",
+    "#............#",
+    "#.##..##..##.#",
+    "#o....##....o#",
+    "##############",
+  ],
   colors: {
     boardBackground: "#020806",
     grid: "rgba(84, 255, 159, 0.12)",
@@ -145,7 +95,7 @@ const GAME_CONFIG = {
     overlayText: "#f7f7fb",
   },
   messages: {
-    ready: "Flechas, WASD o dedo para moverte.",
+    ready: "Flechas o dedo para moverte.",
     paused: "Pausa. Espacio o boton para continuar.",
     powerActive: "Poder activo: puedes destruir drones.",
     droneDestroyed: "Drone destruido. Sigue asi.",
@@ -168,10 +118,6 @@ const directions = {
   ArrowDown: { x: 0, y: 1 },
   ArrowLeft: { x: -1, y: 0 },
   ArrowRight: { x: 1, y: 0 },
-  a: { x: -1, y: 0 },
-  d: { x: 1, y: 0 },
-  s: { x: 0, y: 1 },
-  w: { x: 0, y: -1 },
 };
 
 const oppositeDirections = new Map([
@@ -194,7 +140,6 @@ let gameState = "ready";
 let lastTime = 0;
 let animationTick = 0;
 let currentLevel = GAME_CONFIG.defaultLevel;
-let currentScenario = GAME_CONFIG.defaultScenario;
 let shakeTime = 0;
 let audioContext = null;
 let isMuted = false;
@@ -227,17 +172,6 @@ function applyGameConfig() {
 
     button.querySelector(".difficulty-name").textContent = settings.name;
     button.querySelector(".difficulty-label").textContent = settings.label;
-  });
-
-  scenarioButtons.forEach((button) => {
-    const scenario = GAME_CONFIG.scenarios[button.dataset.scenario];
-
-    if (!scenario) {
-      return;
-    }
-
-    button.querySelector(".scenario-name").textContent = scenario.name;
-    button.querySelector(".scenario-label").textContent = scenario.label;
   });
 }
 
@@ -482,21 +416,7 @@ function setDifficulty(level) {
 }
 
 function getCurrentMap() {
-  return GAME_CONFIG.scenarios[currentScenario].map;
-}
-
-function updateScenarioButtons() {
-  scenarioButtons.forEach((button) => {
-    const isActive = button.dataset.scenario === currentScenario;
-    button.classList.toggle("scenario-item--active", isActive);
-    button.setAttribute("aria-pressed", String(isActive));
-  });
-}
-
-function setScenario(scenario) {
-  currentScenario = scenario;
-  updateScenarioButtons();
-  newGame();
+  return GAME_CONFIG.map;
 }
 
 function tileKey(col, row) {
@@ -1016,10 +936,25 @@ function gameLoop(currentTime) {
   requestAnimationFrame(gameLoop);
 }
 
+function isTypingInEditableField(event) {
+  const target = event.target;
+
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target?.isContentEditable
+  );
+}
+
 window.addEventListener("keydown", (event) => {
+  if (isTypingInEditableField(event)) {
+    return;
+  }
+
   ensureAudio();
 
-  const requestedDirection = directions[event.key] ?? directions[event.key.toLowerCase()];
+  const requestedDirection = directions[event.key];
 
   if (requestedDirection) {
     event.preventDefault();
@@ -1118,16 +1053,8 @@ difficultyButtons.forEach((button) => {
   });
 });
 
-scenarioButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    ensureAudio();
-    setScenario(button.dataset.scenario);
-  });
-});
-
 applyGameConfig();
 updateMuteButton();
 updateDifficultyButtons();
-updateScenarioButtons();
 newGame();
 requestAnimationFrame(gameLoop);

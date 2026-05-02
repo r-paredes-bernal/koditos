@@ -8,12 +8,10 @@ const games = [
   {
     name: "RoboChip",
     inputDir: path.join(rootDir, "games", "RoboChip"),
-    outputFile: "RoboChip.html",
   },
   {
     name: "PadelArcade",
     inputDir: path.join(rootDir, "games", "Pong"),
-    outputFile: "PadelArcade.html",
   },
 ];
 
@@ -37,7 +35,7 @@ function inlineGameAssets(game) {
     )
     .replace(
       '<script src="src/game.js"></script>',
-      `<script>\n${js}\n</script>`
+      `<script>\n(() => {\n${js}\n})();\n</script>`
     )
     .replaceAll('href="../../index.html"', 'href="../index.html"');
 
@@ -48,8 +46,11 @@ fs.mkdirSync(outputDir, { recursive: true });
 
 games.forEach((game) => {
   const standalone = inlineGameAssets(game);
-  const outputPath = path.join(outputDir, game.outputFile);
+  const standalonePath = path.join(outputDir, `${game.name}_standalone.html`);
+  const base64Path = path.join(outputDir, `${game.name}_base64.txt`);
 
-  fs.writeFileSync(outputPath, standalone);
-  console.log(`Built ${game.name}: ${path.relative(rootDir, outputPath)}`);
+  fs.writeFileSync(standalonePath, standalone);
+  fs.writeFileSync(base64Path, Buffer.from(standalone, "utf8").toString("base64"));
+  console.log(`Built ${game.name}: ${path.relative(rootDir, standalonePath)}`);
+  console.log(`Built ${game.name}: ${path.relative(rootDir, base64Path)}`);
 });
