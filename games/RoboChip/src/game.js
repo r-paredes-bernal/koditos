@@ -123,6 +123,7 @@ let currentLevel = 1;
 let currentScenario = "motherboard";
 let shakeTime = 0;
 let audioContext = null;
+let masterGain = null;
 let isMuted = false;
 let touchStart = null;
 const impactEffects = [];
@@ -244,7 +245,14 @@ function updateMuteButton() {
 function ensureAudio() {
   if (!audioContext) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      return;
+    }
+
     audioContext = new AudioContextClass();
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = 0.72;
+    masterGain.connect(audioContext.destination);
   }
 
   if (audioContext.state === "suspended") {
@@ -267,7 +275,7 @@ function playTone(frequency, startTime, duration, type = "square", volume = 0.08
   gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
   oscillator.connect(gain);
-  gain.connect(audioContext.destination);
+  gain.connect(masterGain);
   oscillator.start(startTime);
   oscillator.stop(startTime + duration + 0.02);
 }
@@ -280,38 +288,38 @@ function playSound(name) {
   const now = audioContext.currentTime;
 
   if (name === "pellet") {
-    playTone(740, now, 0.045, "square", 0.04);
+    playTone(740, now, 0.06, "square", 0.08);
   }
 
   if (name === "power") {
-    playTone(392, now, 0.08, "sawtooth", 0.06);
-    playTone(784, now + 0.08, 0.12, "sawtooth", 0.07);
+    playTone(392, now, 0.1, "sawtooth", 0.1);
+    playTone(784, now + 0.08, 0.14, "sawtooth", 0.11);
   }
 
   if (name === "hit") {
-    playTone(170, now, 0.12, "sawtooth", 0.09);
-    playTone(95, now + 0.06, 0.18, "square", 0.08);
+    playTone(170, now, 0.14, "sawtooth", 0.14);
+    playTone(95, now + 0.06, 0.2, "square", 0.12);
   }
 
   if (name === "drone") {
-    playTone(880, now, 0.07, "triangle", 0.07);
-    playTone(1175, now + 0.07, 0.09, "triangle", 0.06);
+    playTone(880, now, 0.08, "triangle", 0.11);
+    playTone(1175, now + 0.07, 0.1, "triangle", 0.1);
   }
 
   if (name === "win") {
     [523, 659, 784, 1047].forEach((frequency, index) => {
-      playTone(frequency, now + index * 0.08, 0.12, "square", 0.06);
+      playTone(frequency, now + index * 0.08, 0.14, "square", 0.1);
     });
   }
 
   if (name === "lose") {
     [330, 247, 196, 123].forEach((frequency, index) => {
-      playTone(frequency, now + index * 0.1, 0.14, "sawtooth", 0.07);
+      playTone(frequency, now + index * 0.1, 0.16, "sawtooth", 0.11);
     });
   }
 
   if (name === "pause") {
-    playTone(440, now, 0.06, "triangle", 0.05);
+    playTone(440, now, 0.08, "triangle", 0.09);
   }
 }
 

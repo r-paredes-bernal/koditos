@@ -73,6 +73,8 @@ let directionShiftTimer = 0;
 let powerUpSpawnTimer = 2.5;
 let dashEffects = [];
 let touchControl = null;
+let audioContext = null;
+let masterGain = null;
 
 const dashCooldowns = {
   left: 0,
@@ -119,6 +121,86 @@ const ball = {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function ensureAudio() {
+  if (!audioContext) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      return;
+    }
+
+    audioContext = new AudioContextClass();
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = 0.58;
+    masterGain.connect(audioContext.destination);
+  }
+
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
+}
+
+function playTone(frequency, startTime, duration, type = "square", volume = 0.08) {
+  if (!audioContext) {
+    return;
+  }
+
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, startTime);
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+  oscillator.connect(gain);
+  gain.connect(masterGain);
+  oscillator.start(startTime);
+  oscillator.stop(startTime + duration + 0.02);
+}
+
+function playSound(name) {
+  if (!audioContext) {
+    return;
+  }
+
+  const now = audioContext.currentTime;
+
+  if (name === "paddle") {
+    playTone(520, now, 0.055, "square", 0.08);
+    playTone(780, now + 0.025, 0.06, "triangle", 0.05);
+  }
+
+  if (name === "powerHit") {
+    playTone(240, now, 0.08, "sawtooth", 0.1);
+    playTone(920, now + 0.05, 0.11, "square", 0.08);
+  }
+
+  if (name === "wall") {
+    playTone(280, now, 0.045, "triangle", 0.06);
+  }
+
+  if (name === "point") {
+    playTone(440, now, 0.08, "square", 0.08);
+    playTone(660, now + 0.08, 0.1, "square", 0.08);
+  }
+
+  if (name === "powerUp") {
+    playTone(720, now, 0.08, "triangle", 0.08);
+    playTone(1080, now + 0.06, 0.12, "triangle", 0.08);
+  }
+
+  if (name === "pause") {
+    playTone(360, now, 0.07, "triangle", 0.07);
+  }
+
+  if (name === "gameOver") {
+    [520, 390, 260].forEach((frequency, index) => {
+      playTone(frequency, now + index * 0.1, 0.13, "sawtooth", 0.08);
+    });
+  }
 }
 
 function updateHud(message) {
@@ -223,6 +305,7 @@ function togglePause() {
   }
 
   gameState = gameState === "playing" ? "paused" : "playing";
+  playSound("pause");
   updateHud(gameState === "paused" ? "Pausa. Espacio para continuar." : "Partida en curso.");
 }
 
@@ -431,7 +514,10 @@ function bounceFromPaddle(paddle, direction, usePower = true) {
   if (usePower && paddle.powerHitTimer > 0) {
     powerBoost += powerHitBoost;
     paddle.powerHitTimer = 0;
+    playSound("powerHit");
     updateHud("Golpe fuerte!");
+  } else {
+    playSound("paddle");
   }
 
   const outgoingSpeed = 330 * (ball.speedBoost + powerBoost);
@@ -455,10 +541,12 @@ function scorePoint(side) {
   }
 
   spawnPointEffect(side);
+  playSound("point");
 
   if (leftScore >= winningScore || rightScore >= winningScore) {
     gameState = "gameOver";
     matchWinner = leftScore > rightScore ? "left" : "right";
+    playSound("gameOver");
     updateHud(matchWinner === "left" ? "Gana jugador 1. Enter para reiniciar." : "Gana jugador 2. Enter para reiniciar.");
     return;
   }
@@ -518,6 +606,7 @@ function activateDirectionShift() {
   ball.vx = Math.cos(angle) * speed * horizontalDirection;
   ball.vy = Math.sin(angle) * speed * verticalDirection;
   limitBallSpeed();
+  playSound("powerUp");
   updateHud("Cambio de direccion!");
 }
 
@@ -546,11 +635,13 @@ function updateBall(deltaTime) {
   if (ball.y <= 0) {
     ball.y = 0;
     ball.vy *= -1;
+    playSound("wall");
   }
 
   if (ball.y + ballSize >= canvas.height) {
     ball.y = canvas.height - ballSize;
     ball.vy *= -1;
+    playSound("wall");
   }
 
   if (ball.vx < 0 && overlapsPaddle(leftPaddle)) {
@@ -578,6 +669,7 @@ function updateBall(deltaTime) {
       ball.x = 0;
       ball.vx = Math.abs(ball.vx);
       assistedWallReturn = null;
+      playSound("wall");
       updateHud("Devolucion con pared izquierda.");
       return;
     }
@@ -590,6 +682,7 @@ function updateBall(deltaTime) {
     ball.x = 0;
     ball.vx = Math.abs(ball.vx);
     lastBackWallHit = "left";
+    playSound("wall");
     updateHud("Pared izquierda. La pelota vuelve a la otra cancha.");
   }
 
@@ -598,6 +691,7 @@ function updateBall(deltaTime) {
       ball.x = canvas.width - ballSize;
       ball.vx = -Math.abs(ball.vx);
       assistedWallReturn = null;
+      playSound("wall");
       updateHud("Devolucion con pared derecha.");
       return;
     }
@@ -610,6 +704,7 @@ function updateBall(deltaTime) {
     ball.x = canvas.width - ballSize;
     ball.vx = -Math.abs(ball.vx);
     lastBackWallHit = "right";
+    playSound("wall");
     updateHud("Pared derecha. La pelota vuelve a la otra cancha.");
   }
 
@@ -827,7 +922,7 @@ function drawOverlay() {
   const userWonMatch = mode === "single" ? matchWinner === "right" : matchWinner === "left";
   const title = gameState === "paused" ? "PAUSA" : "GAME OVER";
   const resultColor = userWonMatch ? "#8dffb0" : "#ff4b67";
-  const message = gameState === "paused" ? "Espacio para continuar" : userWonMatch ? "¡Has ganado!" : "Suerte para la proxima";
+  const message = gameState === "paused" ? "Espacio para continuar" : userWonMatch ? "Has ganado!" : "Suerte para la proxima";
 
   context.fillText(title, canvas.width / 2, canvas.height / 2 - 34);
 
@@ -869,6 +964,8 @@ function gameLoop(currentTime) {
 }
 
 window.addEventListener("keydown", (event) => {
+  ensureAudio();
+
   const key = event.key.toLowerCase();
 
   if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
@@ -901,9 +998,18 @@ window.addEventListener("keyup", (event) => {
   keys.delete(event.key.toLowerCase());
 });
 
-pauseButton.addEventListener("click", togglePause);
-resetButton.addEventListener("click", newGame);
+pauseButton.addEventListener("click", () => {
+  ensureAudio();
+  togglePause();
+});
+
+resetButton.addEventListener("click", () => {
+  ensureAudio();
+  newGame();
+});
+
 powerHitButton.addEventListener("click", () => {
+  ensureAudio();
   requestDash("right");
 });
 
@@ -913,6 +1019,7 @@ canvas.addEventListener("pointerdown", (event) => {
   }
 
   event.preventDefault();
+  ensureAudio();
   canvas.setPointerCapture(event.pointerId);
   updateTouchControl(event);
 });
@@ -944,12 +1051,14 @@ canvas.addEventListener("pointercancel", (event) => {
 
 modeButtons.forEach((button) => {
   button.addEventListener("click", () => {
+    ensureAudio();
     setMode(button.dataset.mode);
   });
 });
 
 difficultyButtons.forEach((button) => {
   button.addEventListener("click", () => {
+    ensureAudio();
     setDifficulty(button.dataset.difficulty);
   });
 });
