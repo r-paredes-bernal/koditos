@@ -74,13 +74,11 @@ body {
   font: inherit;
 }
 
-.controls button:hover,
-.sound-button:hover {
+.controls button:hover {
   border-color: #ffd447;
 }
 
-.controls button:active,
-.sound-button:active {
+.controls button:active {
   transform: translateY(1px);
 }
 
@@ -102,18 +100,6 @@ canvas {
   image-rendering: pixelated;
   touch-action: none;
   user-select: none;
-}
-
-.sound-button {
-  min-width: 48px;
-  min-height: 42px;
-  border: 2px solid #54ff9f;
-  border-radius: 6px;
-  background: #101b18;
-  color: #f7f7fb;
-  cursor: pointer;
-  font: inherit;
-  font-size: 22px;
 }
 
 .status {

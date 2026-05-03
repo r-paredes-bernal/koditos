@@ -81,13 +81,11 @@ body {
   font: inherit;
 }
 
-.controls button:hover,
-.sound-button:hover {
+.controls button:hover {
   border-color: #ffd447;
 }
 
-.controls button:active,
-.sound-button:active {
+.controls button:active {
   transform: translateY(1px);
 }
 
@@ -109,18 +107,6 @@ canvas {
   image-rendering: pixelated;
   touch-action: none;
   user-select: none;
-}
-
-.sound-button {
-  min-width: 48px;
-  min-height: 42px;
-  border: 2px solid #54ff9f;
-  border-radius: 6px;
-  background: #101b18;
-  color: #f7f7fb;
-  cursor: pointer;
-  font: inherit;
-  font-size: 22px;
 }
 
 .status {
@@ -220,9 +206,6 @@ canvas {
 
           <div class="controls">
             <button id="pause-button" type="button">Pausar</button>
-            <button class="sound-button" id="mute-button" type="button" aria-label="Mutear sonido" aria-pressed="false">
-              <span aria-hidden="true">🔊</span>
-            </button>
           </div>
 
           <canvas id="game" width="448" height="480" aria-label="Juego RoboChip"></canvas>
@@ -248,7 +231,6 @@ const scoreElement = document.querySelector("#score");
 const livesElement = document.querySelector("#lives");
 const statusElement = document.querySelector("#status");
 const pauseButton = document.querySelector("#pause-button");
-const muteButton = document.querySelector("#mute-button");
 const touchButtons = document.querySelectorAll(".touch-control[data-direction]");
 
 // === ASSISTANT_EDITABLE_CONFIG_START ===
@@ -357,7 +339,6 @@ let lastTime = 0;
 let animationTick = 0;
 let shakeTime = 0;
 let audioContext = null;
-let isMuted = false;
 let touchStart = null;
 const impactEffects = [];
 
@@ -468,12 +449,6 @@ function updatePauseButton() {
   pauseButton.textContent = "Pausar";
 }
 
-function updateMuteButton() {
-  muteButton.textContent = isMuted ? "🔇" : "🔊";
-  muteButton.setAttribute("aria-label", isMuted ? "Activar sonido" : "Mutear sonido");
-  muteButton.setAttribute("aria-pressed", String(isMuted));
-}
-
 function ensureAudio() {
   if (!audioContext) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -486,7 +461,7 @@ function ensureAudio() {
 }
 
 function playTone(frequency, startTime, duration, type = "square", volume = 0.08) {
-  if (!audioContext || isMuted) {
+  if (!audioContext) {
     return;
   }
 
@@ -506,7 +481,7 @@ function playTone(frequency, startTime, duration, type = "square", volume = 0.08
 }
 
 function playSound(name) {
-  if (!audioContext || isMuted) {
+  if (!audioContext) {
     return;
   }
 
@@ -1219,18 +1194,7 @@ touchButtons.forEach((button) => {
   });
 });
 
-muteButton.addEventListener("click", () => {
-  ensureAudio();
-  isMuted = !isMuted;
-  updateMuteButton();
-
-  if (!isMuted) {
-    playSound("pause");
-  }
-});
-
 applyGameConfig();
-updateMuteButton();
 newGame();
 requestAnimationFrame(gameLoop);
 

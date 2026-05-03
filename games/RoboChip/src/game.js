@@ -5,7 +5,6 @@ const scoreElement = document.querySelector("#score");
 const livesElement = document.querySelector("#lives");
 const statusElement = document.querySelector("#status");
 const pauseButton = document.querySelector("#pause-button");
-const muteButton = document.querySelector("#mute-button");
 const touchButtons = document.querySelectorAll(".touch-control[data-direction]");
 
 // === ASSISTANT_EDITABLE_CONFIG_START ===
@@ -114,7 +113,6 @@ let lastTime = 0;
 let animationTick = 0;
 let shakeTime = 0;
 let audioContext = null;
-let isMuted = false;
 let touchStart = null;
 const impactEffects = [];
 
@@ -225,12 +223,6 @@ function updatePauseButton() {
   pauseButton.textContent = "Pausar";
 }
 
-function updateMuteButton() {
-  muteButton.textContent = isMuted ? "🔇" : "🔊";
-  muteButton.setAttribute("aria-label", isMuted ? "Activar sonido" : "Mutear sonido");
-  muteButton.setAttribute("aria-pressed", String(isMuted));
-}
-
 function ensureAudio() {
   if (!audioContext) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -243,7 +235,7 @@ function ensureAudio() {
 }
 
 function playTone(frequency, startTime, duration, type = "square", volume = 0.08) {
-  if (!audioContext || isMuted) {
+  if (!audioContext) {
     return;
   }
 
@@ -263,7 +255,7 @@ function playTone(frequency, startTime, duration, type = "square", volume = 0.08
 }
 
 function playSound(name) {
-  if (!audioContext || isMuted) {
+  if (!audioContext) {
     return;
   }
 
@@ -976,17 +968,6 @@ touchButtons.forEach((button) => {
   });
 });
 
-muteButton.addEventListener("click", () => {
-  ensureAudio();
-  isMuted = !isMuted;
-  updateMuteButton();
-
-  if (!isMuted) {
-    playSound("pause");
-  }
-});
-
 applyGameConfig();
-updateMuteButton();
 newGame();
 requestAnimationFrame(gameLoop);
